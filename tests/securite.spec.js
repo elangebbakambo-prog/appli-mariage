@@ -54,12 +54,14 @@ test("La page a sa politique de sécurité (CSP)", () => {
 });
 
 test("Tout ce qui vient de la base passe par esc() avant d'être affiché", () => {
-  const t = lire(path.join(ROOT, "app.js"));
+  for (const fichier of ["app.js", "live.js"]) {
+  const t = lire(path.join(ROOT, fichier));
   // Les champs écrits par les gens (prénoms, titres, lieux…) ne doivent jamais être insérés tels quels
-  const champs = ["prenom", "role", "titre", "lieu", "details", "fait_par", "pour"];
+  const champs = ["prenom", "role", "titre", "lieu", "details", "fait_par", "pour", "auteur", "texte", "fichier", "miniature"];
   for (const [, expr] of t.matchAll(/\$\{([^}]+)\}/g)) {
     const brut = champs.some(c => new RegExp(`\\.${c}\\b`).test(expr)) && !/\besc\(|encodeURIComponent\(|hhmm\(|maps\(|\.length|join\(""\)|\?/.test(expr);
-    expect(brut, `app.js affiche \${${expr}} sans esc()`).toBe(false);
+    expect(brut, `${fichier} affiche \${${expr}} sans esc()`).toBe(false);
+  }
   }
 });
 
@@ -68,8 +70,14 @@ test("La base : tables fermées, accès seulement par les fonctions", () => {
   for (const table of ["personnes", "moments", "taches"]) {
     expect(t, `RLS doit être activé sur ${table}`).toMatch(new RegExp(`alter table ${table}\\s+enable row level security`));
   }
-  expect(t, "aucune règle (policy) ne doit ouvrir les tables").not.toMatch(/create policy/i);
+  // Une seule règle : l'envoi de fichiers dans le stockage « live », vérifiée par le code invités
+  const regles = [...t.matchAll(/create policy[^;]*/gi)].map(m => m[0]);
+  expect(regles.length, "une seule règle (policy) attendue").toBe(1);
+  expect(regles[0]).toMatch(/on storage\.objects for insert/);
+  expect(regles[0]).toMatch(/bucket_id = ''live'' and public\.code_invites_ok/);
   expect(t).toMatch(/revoke all on personnes, moments, taches from anon, authenticated/);
+  expect(t).toMatch(/revoke all on reglages, posts from anon, authenticated/);
+  for (const table of ["reglages", "posts"]) expect(t).toMatch(new RegExp(`alter table ${table}\\s+enable row level security`));
   for (const [, nom] of t.matchAll(/create or replace function (\w+)\([^)]*\)[^$]*security definer/g)) {
     expect(t, `${nom} doit fixer son search_path`).toMatch(new RegExp(`function ${nom}\\([^)]*\\)[^$]*set search_path`));
   }

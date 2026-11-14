@@ -70,6 +70,7 @@ begin
 
   return jsonb_build_object(
     'moi', jsonb_build_object('prenom', m.prenom, 'role', m.role, 'admin', m.admin),
+    'invite', (select valeur from reglages where cle = 'code_invites'),
 
     'moments', coalesce((
       select jsonb_agg(to_jsonb(x) order by x.debut, x.id)
@@ -117,3 +118,108 @@ end $$;
 
 revoke execute on function mon_espace(text), cocher(text, bigint, boolean) from public;
 grant  execute on function mon_espace(text), cocher(text, bigint, boolean) to anon, authenticated;
+
+-- ===============================================================
+-- 3. Le live des invités (stories photos et vidéos)
+-- ===============================================================
+-- Les invités entrent avec UN code commun (le QR code sur les tables).
+-- Ce code est rangé ici, jamais dans le code de l'appli.
+
+create table if not exists reglages (
+  cle    text primary key,
+  valeur text not null
+);
+insert into reglages (cle, valeur)
+  values ('code_invites', left(replace(gen_random_uuid()::text, '-', ''), 10))
+  on conflict (cle) do nothing;
+
+create table if not exists posts (
+  id        uuid primary key default gen_random_uuid(),
+  auteur    text not null check (char_length(auteur) between 1 and 30),
+  type      text not null check (type in ('photo', 'video')),
+  fichier   text not null,                -- chemin dans le stockage « live »
+  miniature text not null,                -- petite image pour le fil (économise la bande passante)
+  texte     text check (char_length(texte) <= 200),
+  cree_le   timestamptz not null default now(),
+  maj       timestamptz not null default now(),
+  cache     boolean not null default false -- masqué par un admin
+);
+create index if not exists posts_maj on posts (maj);
+
+alter table reglages enable row level security;
+alter table posts    enable row level security;
+revoke all on reglages, posts from anon, authenticated;
+
+-- Le bon code invités ? (sert aussi au stockage, pour accepter ou refuser un envoi)
+create or replace function code_invites_ok(p_code text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from reglages where cle = 'code_invites' and valeur = p_code);
+$$;
+
+-- Le fil : seulement les posts modifiés depuis la dernière visite (petit et rapide)
+create or replace function live_fil(p_code text, p_depuis timestamptz default null)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+begin
+  if not code_invites_ok(p_code) then return null; end if;
+  return jsonb_build_object(
+    'maintenant', now(),
+    'posts', coalesce((
+      select jsonb_agg(case when p.cache then jsonb_build_object('id', p.id, 'cache', true)
+                            else jsonb_build_object('id', p.id, 'auteur', p.auteur, 'type', p.type,
+                                                    'fichier', p.fichier, 'miniature', p.miniature,
+                                                    'texte', p.texte, 'cree_le', p.cree_le) end
+                       order by p.cree_le)
+      from posts p
+      where (p_depuis is null and not p.cache) or p.maj > p_depuis), '[]'::jsonb));
+end $$;
+
+-- Publier un post (les fichiers ont déjà été envoyés dans le stockage)
+create or replace function live_poster(p_code text, p_auteur text, p_type text,
+                                       p_fichier text, p_miniature text, p_texte text default null)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare forme text; n uuid;
+begin
+  if not code_invites_ok(p_code) then raise exception 'code invités incorrect'; end if;
+  forme := '^' || p_code || '/[0-9a-f-]{36}';
+  if p_fichier !~ (forme || '\.(jpg|mp4|webm|mov)$') or p_miniature !~ (forme || '-m\.jpg$') then
+    raise exception 'fichier invalide';
+  end if;
+  -- Anti-spam : 15 posts maximum en 5 minutes pour un même prénom
+  if (select count(*) from posts where auteur = trim(p_auteur) and cree_le > now() - interval '5 minutes') >= 15 then
+    raise exception 'trop de posts, attends un peu';
+  end if;
+  insert into posts (auteur, type, fichier, miniature, texte)
+    values (trim(p_auteur), p_type, p_fichier, p_miniature, nullif(trim(p_texte), ''))
+    returning id into n;
+  return n;
+end $$;
+
+-- Masquer / remontrer un post : seulement les admins (avec leur lien perso)
+create or replace function live_cacher(p_code text, p_post uuid, p_cache boolean)
+returns boolean language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (select 1 from personnes where code = p_code and admin) then return false; end if;
+  update posts set cache = p_cache, maj = now() where id = p_post;
+  return found;
+end $$;
+
+revoke execute on function code_invites_ok(text), live_fil(text, timestamptz),
+  live_poster(text, text, text, text, text, text), live_cacher(text, uuid, boolean) from public;
+grant execute on function code_invites_ok(text), live_fil(text, timestamptz),
+  live_poster(text, text, text, text, text, text), live_cacher(text, uuid, boolean) to anon, authenticated;
+
+-- Le stockage des photos et vidéos (seulement sur Supabase : ignoré ailleurs)
+-- Public en lecture (les adresses sont impossibles à deviner), 20 Mo maximum par fichier.
+-- Envoi accepté seulement dans le dossier du bon code invités ; pas de liste, pas de modification, pas de suppression.
+do $$
+begin
+  if exists (select 1 from pg_namespace where nspname = 'storage') then
+    insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+      values ('live', 'live', true, 20971520, array['image/jpeg', 'video/mp4', 'video/webm', 'video/quicktime'])
+      on conflict (id) do update set public = true, file_size_limit = excluded.file_size_limit,
+                                     allowed_mime_types = excluded.allowed_mime_types;
+    execute 'drop policy if exists "live : envoi avec le code invites" on storage.objects';
+    execute 'create policy "live : envoi avec le code invites" on storage.objects for insert to anon, authenticated
+             with check (bucket_id = ''live'' and public.code_invites_ok((storage.foldername(name))[1]))';
+  end if;
+end $$;

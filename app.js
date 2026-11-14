@@ -17,6 +17,10 @@ try {
   else code = localStorage.getItem("mariage-code") || "";
 } catch (e) {}
 if (code && !params.get("code")) history.replaceState(null, "", "?code=" + encodeURIComponent(code));
+// Invité (QR code) : le code invités reste aussi dans l'adresse, pour l'icône de l'écran d'accueil
+if (!code && LIVE.invite && !params.get("invite")) history.replaceState(null, "", "?invite=" + encodeURIComponent(LIVE.invite));
+// Un invité n'a pas de lien perso : il ne voit que le live
+const modeInvite = () => !code && !!LIVE.invite;
 
 let data = null;         // ce que mon_espace renvoie
 let onglet = "programme";
@@ -49,7 +53,8 @@ function demoEspace(c) {
     moi: { prenom: m.prenom, role: m.role, admin: m.admin },
     moments: D.moments.filter(x => m.admin || concerne(x.pour, m.role, m.prenom)),
     taches: D.taches.filter(mien).map(t => Object.assign({ pour: t.prenom || t.role, fait: false }, t, coches[t.id] || {})),
-    equipe: m.admin ? D.personnes : null
+    equipe: m.admin ? D.personnes : null,
+    invite: "invites"
   };
 }
 
@@ -60,6 +65,7 @@ function garderCopie() { try { localStorage.setItem(CLE_COPIE(), JSON.stringify(
 let horsLigne = false;
 
 async function charger() {
+  if (modeInvite()) { dessiner(); return chargerLive(); }
   if (!code) { data = null; return dessiner(); }
   if (!data) { data = lireCopie(); if (data) dessiner(); }
   try {
@@ -67,6 +73,7 @@ async function charger() {
     data = frais; horsLigne = false;
     erreur = data ? "" : "inconnu";
     if (data) garderCopie();
+    if (data && data.invite) LIVE.invite = data.invite;
   } catch (e) {
     horsLigne = !!data;
     erreur = data ? "" : "reseau";   // si on avait déjà des données, on les garde
@@ -230,12 +237,19 @@ function bandeauInstall() {
 }
 
 function dessiner() {
+  if (cam && cam.el && !cam.el.hidden) return;   // ne pas redessiner sous la caméra
+  if (modeInvite()) {
+    app.innerHTML = `${entete()}${bandeauInstall()}<section class="vue">${vueLive(true)}</section>`;
+    return;
+  }
   if (!data) { app.innerHTML = ecranCode(); return; }
   const reste = data.taches.filter(t => !t.fait).length;
   const onglets = [["programme", "Programme"], ["taches", data.moi.admin ? "Tâches" : "Mes tâches", reste]];
+  if (data.invite) onglets.splice(1, 0, ["live", "Live"]);
   if (data.moi.admin && data.equipe) onglets.push(["equipe", "Équipe"]);
   if (!onglets.some(o => o[0] === onglet)) onglet = "programme";
-  const vue = onglet === "taches" ? vueTaches() : onglet === "equipe" ? vueEquipe() : vueProgramme();
+  const vue = onglet === "taches" ? vueTaches() : onglet === "equipe" ? carteQr() + vueEquipe()
+    : onglet === "live" ? vueLive(false) : vueProgramme();
   app.innerHTML = `${entete()}
     ${horsLigne ? `<p class="horsligne">Pas de réseau : tu vois la dernière version enregistrée.</p>` : ""}
     ${bandeauInstall()}
@@ -256,7 +270,7 @@ function alerte(txt) {
 // ---------- Interactions ----------
 app.addEventListener("click", async e => {
   const o = e.target.closest("[data-onglet]");
-  if (o) { onglet = o.dataset.onglet; dessiner(); window.scrollTo({ top: 0 }); return; }
+  if (o) { onglet = o.dataset.onglet; dessiner(); window.scrollTo({ top: 0 }); if (onglet === "live") chargerLive(); return; }
   if (e.target.closest("[data-installer]") && invite) { invite.prompt(); invite = null; return; }
   if (e.target.closest("[data-fermer-install]")) {
     try { localStorage.setItem("mariage-install-ferme", "1"); } catch (err) {}
@@ -288,5 +302,7 @@ charger();
 setInterval(() => { if (!document.hidden && data) charger(); }, 30000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden && data) charger(); });
 setInterval(() => { if (data && onglet === "programme" && jourJ() === 0) dessiner(); }, 60000);
+// Le live : les nouveaux posts toutes les 15 s (seulement les nouveautés, c'est tout petit)
+setInterval(() => { if (!document.hidden && !story && (modeInvite() || (data && onglet === "live"))) chargerLive(); }, 15000);
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});

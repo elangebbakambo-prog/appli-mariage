@@ -4,7 +4,9 @@ Appli web pour le jour J, en HTML, CSS et JavaScript sans framework, avec Supaba
 
 **Partie 1 : l'organisation (faite).** Chaque personne (mariés, témoins, garçons d'honneur, prestataires) reçoit **son lien perso** (`…/?code=XXXX`). En l'ouvrant, elle voit le programme qui la concerne et ses tâches à cocher. Pas de compte ni de mot de passe.
 
-**Partie 2 : le live des invités** (caméra, stories, photos, vidéos, montages) : à venir.
+**Partie 2 : le live des invités (faite).** Un QR code commun (onglet **Équipe** des admins, à imprimer sur les tables) mène au live : l'invité tape son prénom, puis prend des photos et des vidéos avec la caméra façon Snap (filtres, texte), ou les choisit dans sa galerie. Tout le monde voit le fil et les stories en plein écran. Ceux qui ont un lien perso ont un onglet **Live**. Les admins peuvent masquer un post (🚫 dans la story).
+
+Récupération des souvenirs et montages : à venir.
 
 ## Les fichiers
 
@@ -12,7 +14,9 @@ Appli web pour le jour J, en HTML, CSS et JavaScript sans framework, avec Supaba
 | --- | --- |
 | `index.html` | La page, presque vide : tout est dessiné par `app.js` |
 | `style.css` | Le style. **Les couleurs du mariage sont en haut**, dans `:root` |
-| `app.js` | Toute la logique : programme, tâches, équipe |
+| `app.js` | La logique : programme, tâches, équipe |
+| `live.js` | Le live : caméra, envoi, fil, stories |
+| `vendor/qrcode.js` | Générateur de QR code (copié ici plutôt que chargé depuis un autre site) |
 | `config.js` | Prénoms des mariés, date, connexion Supabase |
 | `demo.js` | Données d'exemple, utilisées tant que Supabase n'est pas branché |
 | `supabase/schema.sql` | Les tables et les deux fonctions sécurisées |
@@ -24,9 +28,18 @@ Appli web pour le jour J, en HTML, CSS et JavaScript sans framework, avec Supaba
 - **Tâches** : soit pour une personne précise (`personne_id`), soit pour tout un rôle (`role`). Une tâche de rôle est partagée : si un témoin la coche, elle est cochée pour tous les témoins, avec « fait par … ».
 - **Admin** (`admin = true`, pour les mariés et l'organisation) : voit et coche tout, et a l'onglet **Équipe** avec le lien de chacun (bouton « Copier » et « WhatsApp »).
 
+## Le live et le Supabase gratuit
+
+Avec ~125 invités, le plus gros risque est la limite de **5 Go téléchargés par mois** du plan gratuit. L'appli est réglée pour économiser :
+- le fil n'affiche que des **miniatures** (~20 Ko) ; la photo ou la vidéo entière ne se charge qu'à l'ouverture ;
+- photos compressées (~250 Ko max), vidéos de la caméra limitées à **10 s** en qualité réduite (~1,5 Mo) ; galerie : 15 s et 20 Mo max ;
+- toutes les 15 s, l'appli ne demande que les **nouveaux** posts.
+
+Réglages en haut de `live.js`. Si besoin, passer Supabase en Pro pour le mois du mariage (rien à changer dans le code).
+
 ## Sécurité
 
-Les tables sont fermées (RLS activé, aucune règle) : la clé publique ne permet pas de les lire. L'appli passe uniquement par deux fonctions, `mon_espace(code)` et `cocher(code, tache, fait)`, qui vérifient le code et ne renvoient que ce qui concerne la personne. Les codes font 12 caractères aléatoires : impossible de deviner celui d'un autre.
+Les tables sont fermées (RLS activé, aucune règle) : la clé publique ne permet pas de les lire. Le live a son propre code (le QR code des invités), rangé dans la table `reglages` : il ne donne accès qu'au live, jamais à l'organisation. Les fichiers vont dans le stockage `live` (20 Mo max, photos et vidéos seulement) : on ne peut y envoyer qu'avec le bon code invités, et on ne peut ni lister, ni remplacer, ni supprimer. Anti-spam : 15 posts max en 5 minutes par prénom. L'appli passe uniquement par deux fonctions, `mon_espace(code)` et `cocher(code, tache, fait)`, qui vérifient le code et ne renvoient que ce qui concerne la personne. Les codes font 12 caractères aléatoires : impossible de deviner celui d'un autre.
 
 Ne partage jamais un lien admin, et ne mets jamais la clé secrète de Supabase dans le code.
 

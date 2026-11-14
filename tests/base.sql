@@ -3,7 +3,8 @@
 -- d'autre que ce que son code autorise. Une erreur arrête tout : le test est ❌.
 \set ON_ERROR_STOP on
 
-create temp table codes as select prenom, code from personnes;
+create temp table codes as select prenom, code from personnes
+  union all select 'INVITES', valeur from reglages where cle = 'code_invites';
 grant select on codes to anon;
 set role anon;
 
@@ -49,6 +50,49 @@ begin
   -- 6. La mariée (admin) voit tout, avec les liens
   e := mon_espace(c_mariee);
   if jsonb_array_length(e->'equipe') <> 6 then raise exception 'ÉCHEC : l''admin devrait voir les 6 personnes'; end if;
+
+  -- 7. Le live
+  declare inv text; p uuid; f jsonb; u text := gen_random_uuid()::text;
+  begin
+    select code into inv from codes where prenom = 'INVITES';
+    begin perform 1 from reglages; raise exception 'ÉCHEC : anon peut lire le code invités';
+    exception when insufficient_privilege then null; end;
+    begin perform 1 from posts; raise exception 'ÉCHEC : anon peut lire les posts directement';
+    exception when insufficient_privilege then null; end;
+    if live_fil('faux') is not null then raise exception 'ÉCHEC : le fil s''ouvre avec un mauvais code'; end if;
+    if live_fil(c_temoin) is not null then raise exception 'ÉCHEC : un code perso sert de code invités'; end if;
+    if (mon_espace(c_temoin)->>'invite') <> inv then raise exception 'ÉCHEC : l''organisation ne reçoit pas le code invités'; end if;
+
+    begin perform live_poster('faux', 'Pirate', 'photo', 'faux/' || u || '.jpg', 'faux/' || u || '-m.jpg');
+      raise exception 'ÉCHEC : poster avec un mauvais code';
+    exception when raise_exception then if sqlerrm like 'ÉCHEC%' then raise; end if; end;
+    begin perform live_poster(inv, 'Pirate', 'photo', 'https://pirate.example/x.jpg', inv || '/' || u || '-m.jpg');
+      raise exception 'ÉCHEC : un post peut pointer vers un autre site';
+    exception when raise_exception then if sqlerrm like 'ÉCHEC%' then raise; end if; end;
+    begin perform live_poster(inv, 'Pirate', 'photo', inv || '/../' || u || '.jpg', inv || '/' || u || '-m.jpg');
+      raise exception 'ÉCHEC : un chemin bizarre est accepté';
+    exception when raise_exception then if sqlerrm like 'ÉCHEC%' then raise; end if; end;
+
+    p := live_poster(inv, 'Léa', 'photo', inv || '/' || u || '.jpg', inv || '/' || u || '-m.jpg', 'Trop beau');
+    f := live_fil(inv);
+    if jsonb_array_length(f->'posts') <> 1 then raise exception 'ÉCHEC : le post n''apparaît pas dans le fil'; end if;
+    if jsonb_array_length(live_fil(inv, (f->>'maintenant')::timestamptz + interval '1 second')->'posts') <> 0 then
+      raise exception 'ÉCHEC : le fil renvoie tout au lieu des nouveautés'; end if;
+
+    if live_cacher(c_temoin, p, true) then raise exception 'ÉCHEC : un témoin peut masquer un post'; end if;
+    if live_cacher(inv, p, true) then raise exception 'ÉCHEC : le code invités peut masquer un post'; end if;
+    if not live_cacher(c_mariee, p, true) then raise exception 'ÉCHEC : l''admin ne peut pas masquer'; end if;
+    if live_fil(inv)::text like '%Trop beau%' then raise exception 'ÉCHEC : un post masqué reste visible'; end if;
+    if live_fil(inv, (f->>'maintenant')::timestamptz)->'posts'->0->>'cache' <> 'true' then
+      raise exception 'ÉCHEC : les téléphones ne sont pas prévenus qu''un post est masqué'; end if;
+
+    for i in 1..15 loop
+      perform live_poster(inv, 'Spam', 'photo', inv || '/' || gen_random_uuid() || '.jpg', inv || '/' || u || '-m.jpg');
+    end loop;
+    begin perform live_poster(inv, 'Spam', 'photo', inv || '/' || u || '.jpg', inv || '/' || u || '-m.jpg');
+      raise exception 'ÉCHEC : pas d''anti-spam';
+    exception when raise_exception then if sqlerrm like 'ÉCHEC%' then raise; end if; end;
+  end;
 
   raise notice '✅ Base : tous les tests de sécurité passent';
 end $$;

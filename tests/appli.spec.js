@@ -72,6 +72,8 @@ test("Un texte piégé dans la base s'affiche comme du texte, sans s'exécuter",
   await expect(page.locator(".corps img")).toHaveCount(0);
 });
 
+test.describe(() => {
+test.use({ serviceWorkers: "allow" });
 test("Hors ligne, l'appli s'ouvre encore", async ({ page, context }) => {
   await page.goto("/?code=temoin");
   await page.evaluate(() => navigator.serviceWorker.ready);
@@ -79,4 +81,70 @@ test("Hors ligne, l'appli s'ouvre encore", async ({ page, context }) => {
   await context.setOffline(true);
   await page.reload();
   await expect(page.locator(".moment").first()).toBeVisible();
+});
+});
+
+// ---------- Le live ----------
+test("Un invité (QR code) donne son prénom et ne voit que le live", async ({ page }) => {
+  await page.goto("/?invite=invites");
+  await expect(page.getByText("Bienvenue au live")).toBeVisible();
+  await page.fill("#champPrenom", "Léa");
+  await page.click("#formPrenom button");
+  await expect(page.getByText("Salut")).toContainText("Léa");
+  await expect(page.locator("[data-onglet]")).toHaveCount(0);       // pas de programme ni de tâches
+  await expect(page.getByText("Lance-toi")).toBeVisible();
+});
+
+test("Un mauvais QR code est refusé", async ({ page }) => {
+  await page.goto("/?invite=faux");
+  await expect(page.getByText("n'est plus valable")).toBeVisible();
+});
+
+test("Prendre une photo avec la caméra, la poster, puis l'ouvrir en story", async ({ page }) => {
+  await page.goto("/?invite=invites");
+  await page.fill("#champPrenom", "Léa"); await page.click("#formPrenom button");
+  await page.click("[data-poster]");
+  await expect(page.locator("#cam")).toBeVisible();
+  await page.waitForFunction(() => document.getElementById("camV").videoWidth > 0);
+  await page.locator("#camShut").focus(); await page.keyboard.press("Enter");     // une photo
+  await expect(page.locator("#camEdit")).toBeVisible();
+  await page.click("#camSend");
+  await expect(page.locator(".vignette")).toHaveCount(1);
+  await expect(page.locator(".vignette .qui")).toHaveText("Léa");
+  await page.click(".vignette");
+  await expect(page.locator("#story")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#story")).toBeHidden();
+});
+
+test("Filmer une vidéo (appui long) et la poster", async ({ page }) => {
+  await page.goto("/?invite=invites");
+  await page.fill("#champPrenom", "Léa"); await page.click("#formPrenom button");
+  await page.click("[data-poster]");
+  await page.waitForFunction(() => document.getElementById("camV").videoWidth > 0);
+  const b = await page.locator("#camShut").boundingBox();
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await page.mouse.down(); await page.waitForTimeout(1600); await page.mouse.up();
+  await expect(page.locator("#camPV")).toBeVisible();
+  await page.click("#camSend");
+  await expect(page.locator(".vignette .lecture")).toHaveCount(1);
+});
+
+test("Poster une photo depuis la galerie", async ({ page }) => {
+  await page.goto("/?invite=invites");
+  await page.fill("#champPrenom", "Léa"); await page.click("#formPrenom button");
+  await page.evaluate(() => choisirGalerie = () => {});            // pas de vraie fenêtre de fichiers en test
+  await page.evaluate(() => { const f = document.createElement("input"); f.type = "file"; f.id = "galerieTest"; f.onchange = () => depuisGalerie(f.files[0]); document.body.appendChild(f); });
+  await page.setInputFiles("#galerieTest", require("path").join(__dirname, "..", "icon-512.png"));
+  await expect(page.locator(".vignette")).toHaveCount(1);
+});
+
+test("L'organisation a un onglet Live, et les admins le QR code des invités", async ({ page }) => {
+  await page.goto("/?code=temoin");
+  await page.click("[data-onglet=live]");
+  await expect(page.locator("[data-poster]")).toBeVisible();
+  await page.goto("/?code=mariee");
+  await page.click("[data-onglet=equipe]");
+  await expect(page.locator(".qr img")).toBeVisible();
+  await expect(page.locator(".qr [data-copier]")).toHaveAttribute("data-copier", /\?invite=invites$/);
 });
