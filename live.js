@@ -309,7 +309,8 @@ const FILTRES = [
   ["Doré", (r, g, b) => [r * 1.08 + 14, g * 1.02 + 6, b * .82]],
   ["Vintage", (r, g, b) => { const sr = r * .393 + g * .769 + b * .189, sg = r * .349 + g * .686 + b * .168, sb = r * .272 + g * .534 + b * .131;
     return [(r * .35 + sr * .65) * .88 + 26, (g * .35 + sg * .65) * .88 + 22, (b * .35 + sb * .65) * .88 + 18]; }],
-  ["Doux", (r, g, b) => [r * .96 + 14, g * .96 + 12, b * .96 + 16]]
+  ["Doux", (r, g, b) => [r * .96 + 14, g * .96 + 12, b * .96 + 16]],
+  ["Hiver", (r, g, b) => [r * .92 + 6, g * .98 + 10, b * 1.1 + 22]]
 ];
 const CAM_REC = typeof MediaRecorder !== "undefined";
 let cam = null;
