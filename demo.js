@@ -1,0 +1,27 @@
+// Données de démonstration, utilisées seulement tant que Supabase n'est pas branché (config.js).
+// Liens de test : ?code=mariee (admin), ?code=temoin, ?code=dj
+window.DEMO = {
+  personnes: [
+    { prenom: "La mariée", role: "Mariée", admin: true, tel: "", code: "mariee" },
+    { prenom: "Elange", role: "Organisation", admin: true, tel: "", code: "elange" },
+    { prenom: "Témoin 1", role: "Témoin", admin: false, tel: "", code: "temoin" },
+    { prenom: "Témoin 2", role: "Témoin", admin: false, tel: "", code: "temoin2" },
+    { prenom: "DJ", role: "DJ", admin: false, tel: "", code: "dj" },
+    { prenom: "Traiteur", role: "Traiteur", admin: false, tel: "", code: "traiteur" }
+  ],
+  moments: [
+    { id: 1, debut: "08:00", fin: "10:00", titre: "Installation de la salle", lieu: "Salle de réception", details: "Déco des tables, plan de table, livre d'or.", pour: ["Témoin", "Traiteur"] },
+    { id: 2, debut: "14:00", fin: "15:00", titre: "Cérémonie", lieu: "Mairie", details: "Arriver 15 min avant. Les témoins signent le registre.", pour: [] },
+    { id: 3, debut: "16:00", fin: "18:30", titre: "Vin d'honneur", lieu: "Salle de réception", details: "", pour: [] },
+    { id: 4, debut: "19:30", fin: null, titre: "Entrée des mariés", lieu: "Salle de réception", details: "Le DJ lance la musique d'entrée au signal des témoins.", pour: [] },
+    { id: 5, debut: "20:00", fin: "22:30", titre: "Dîner", lieu: "Salle de réception", details: "", pour: [] },
+    { id: 6, debut: "23:00", fin: null, titre: "Ouverture du bal", lieu: "Piste de danse", details: "", pour: [] }
+  ],
+  taches: [
+    { id: 1, titre: "Récupérer les alliances", details: "Chez la mariée, la veille au soir.", heure: null, role: "Témoin" },
+    { id: 2, titre: "Donner le signal au DJ pour l'entrée des mariés", details: "", heure: "19:25", role: "Témoin" },
+    { id: 3, titre: "Tester le son et le micro", details: "", heure: "15:30", role: "DJ" },
+    { id: 4, titre: "Dresser le buffet du vin d'honneur", details: "", heure: "15:30", role: "Traiteur" },
+    { id: 5, titre: "Préparer le discours des témoins", details: "", heure: null, prenom: "Témoin 1" }
+  ]
+};

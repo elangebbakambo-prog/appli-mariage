@@ -1,0 +1,97 @@
+/* Couleurs du mariage : à changer ici, tout le reste suit. */
+:root {
+  --fond: #F7F3EC;      /* ivoire */
+  --carte: #FFFFFF;
+  --texte: #2E2A26;
+  --doux: #8A8178;
+  --trait: #E6DED2;
+  --accent: #7A8B6F;    /* vert sauge */
+  --or: #B8975A;
+  --titre: "Cormorant Garamond", Georgia, serif;
+  --corps: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--fond); color: var(--texte); font: 16px/1.45 var(--corps); }
+main {
+  max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;
+  padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 60px max(16px, env(safe-area-inset-left));
+}
+a { color: var(--accent); }
+
+/* En-tête */
+.hero { text-align: center; padding: 18px 0 4px; }
+.eyebrow { margin: 0; font-size: .75rem; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--or); }
+h1 { margin: 4px 0; font: 600 clamp(2.4rem, 11vw, 3.4rem)/1 var(--titre); }
+.date { margin: 0; color: var(--doux); text-transform: capitalize; }
+.date b { color: var(--accent); text-transform: none; }
+.demo { display: inline-block; margin: 10px 0 0; padding: 4px 10px; border-radius: 999px; background: #FFF3D6; color: #7A5A12; font-size: .8rem; }
+
+/* Cartes et boutons */
+.carte, .bonjour { background: var(--carte); border: 1px solid var(--trait); border-radius: 18px; padding: 16px; }
+.carte h2 { margin: 0 0 6px; font: 600 1.6rem var(--titre); }
+.bonjour { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ligne { display: flex; gap: 8px; margin-top: 12px; }
+input[type=text], input:not([type]) { flex: 1; min-width: 0; padding: 11px 14px; border: 1px solid var(--trait); border-radius: 12px; font: inherit; background: var(--fond); }
+.btn { display: inline-flex; align-items: center; justify-content: center; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--trait);
+  background: var(--carte); color: var(--texte); font: 600 .88rem var(--corps); text-decoration: none; cursor: pointer; }
+.btn.plein { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pastille { display: inline-block; padding: 2px 9px; border-radius: 999px; background: #EEF1EA; color: var(--accent); font-size: .78rem; font-weight: 600; }
+.pastille.or { background: #F5EDDD; color: #8A6B30; }
+.petit { font-size: .88rem; color: var(--doux); margin: 10px 0 0; }
+.err { color: #A23B2C; font-weight: 500; }
+.vide { text-align: center; color: var(--doux); padding: 30px 0; }
+:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+
+/* Onglets */
+.onglets { position: sticky; top: 0; z-index: 5; display: flex; gap: 6px; padding: 6px; background: rgba(247, 243, 236, .92);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-radius: 999px; border: 1px solid var(--trait); }
+.onglet { flex: 1; padding: 10px 8px; border: 0; border-radius: 999px; background: none; font: 600 .9rem var(--corps); color: var(--doux); cursor: pointer; }
+.onglet[aria-selected=true] { background: var(--carte); color: var(--texte); box-shadow: 0 1px 4px rgba(0, 0, 0, .08); }
+.nb { display: inline-block; min-width: 20px; padding: 0 6px; border-radius: 999px; background: var(--or); color: #fff; font-size: .75rem; }
+
+/* Programme : une frise verticale */
+.frise { list-style: none; margin: 0; padding: 0; }
+.moment { display: grid; grid-template-columns: 64px 1fr; gap: 12px; position: relative; padding-bottom: 18px; }
+.moment::before { content: ""; position: absolute; left: 75px; top: 8px; bottom: 0; width: 1px; background: var(--trait); }
+.moment:last-child::before { display: none; }
+.heure { font: 600 1.15rem var(--titre); text-align: right; padding-top: 2px; }
+.heure small { display: block; font: 400 .75rem var(--corps); color: var(--doux); }
+.corps { position: relative; margin-left: 12px; background: var(--carte); border: 1px solid var(--trait); border-radius: 16px; padding: 12px 14px; }
+.corps::before { content: ""; position: absolute; left: -18px; top: 10px; width: 11px; height: 11px; border-radius: 50%; background: var(--fond); border: 2px solid var(--or); }
+.corps h3 { margin: 0; font: 600 1.3rem/1.15 var(--titre); }
+.corps p { margin: 6px 0 0; color: #5A534C; font-size: .93rem; }
+.lieu { display: inline-block; margin-top: 4px; font-size: .88rem; text-decoration: none; }
+.corps .pastille { margin-top: 8px; }
+.moment.passe { opacity: .45; }
+.moment.en-cours .corps { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(122, 139, 111, .18); }
+.moment.en-cours .corps::before { background: var(--accent); border-color: var(--accent); }
+.live { display: inline-block; margin-bottom: 4px; padding: 2px 8px; border-radius: 999px; background: var(--accent); color: #fff; font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+
+/* Tâches */
+.resume { margin: 0; text-align: center; color: var(--doux); }
+.resume b { color: var(--texte); }
+.sous { margin: 18px 0 8px; font: 600 1.3rem var(--titre); }
+.taches { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.tache label { display: flex; gap: 12px; align-items: flex-start; background: var(--carte); border: 1px solid var(--trait); border-radius: 14px; padding: 12px 14px; cursor: pointer; }
+.tache input { position: absolute; opacity: 0; pointer-events: none; }
+.case { flex: 0 0 26px; height: 26px; border-radius: 8px; border: 2px solid var(--trait); display: grid; place-items: center; transition: .15s; }
+.tache input:checked + .case { background: var(--accent); border-color: var(--accent); }
+.tache input:checked + .case::after { content: "✓"; color: #fff; font-weight: 700; }
+.tache input:focus-visible + .case { outline: 3px solid var(--or); outline-offset: 2px; }
+.txt { display: flex; flex-direction: column; gap: 2px; }
+.txt small { color: #5A534C; }
+.txt .meta { color: var(--doux); font-size: .8rem; }
+.tache.faite b { text-decoration: line-through; color: var(--doux); }
+
+/* Équipe (admin) */
+.equipe { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.perso { background: var(--carte); border: 1px solid var(--trait); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.perso small { color: var(--doux); }
+.barre { height: 6px; border-radius: 999px; background: var(--trait); overflow: hidden; }
+.barre i { display: block; height: 100%; background: var(--accent); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20;
+  background: var(--texte); color: #fff; padding: 10px 16px; border-radius: 999px; font-size: .9rem; }
