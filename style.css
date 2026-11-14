@@ -95,3 +95,11 @@ input[type=text], input:not([type]) { flex: 1; min-width: 0; padding: 11px 14px;
 
 .toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20;
   background: var(--texte); color: #fff; padding: 10px 16px; border-radius: 999px; font-size: .9rem; }
+
+/* Installer l'appli + hors-ligne */
+.install { display: flex; align-items: center; gap: 12px; background: var(--carte); border: 1px solid var(--or); border-radius: 16px; padding: 12px 14px; }
+.install img { border-radius: 10px; flex: 0 0 auto; }
+.install div { flex: 1; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; font-size: .92rem; }
+.install small { color: var(--doux); }
+.fermer { border: 0; background: none; font-size: 1.5rem; line-height: 1; color: var(--doux); cursor: pointer; padding: 4px 8px; }
+.horsligne { margin: 0; text-align: center; padding: 8px 12px; border-radius: 12px; background: #FFF3D6; color: #7A5A12; font-size: .88rem; }

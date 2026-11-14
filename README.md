@@ -41,3 +41,10 @@ Ne partage jamais un lien admin, et ne mets jamais la clé secrète de Supabase 
 ## Tester en local
 
 Ouvre le dossier dans VS Code, puis clic droit sur `index.html` → « Open with Live Server ». Sans Supabase, le mode démo marche avec `?code=mariee` (admin), `?code=temoin` ou `?code=dj`.
+
+## Appli sur l'écran d'accueil (PWA)
+
+- `manifest.webmanifest` + icônes `icon-*.png` : l'appli s'installe comme une vraie appli. Le manifest n'a volontairement **pas** de `start_url` : l'icône garde l'adresse avec le code de la personne, donc chacun retombe sur son espace.
+- `sw.js` : garde une copie des fichiers. Les dernières données reçues sont aussi gardées sur le téléphone : sans réseau, on voit la dernière version (avec un bandeau jaune).
+- Un bandeau propose l'installation (bouton sur Android, explication sur iPhone) ; il disparaît une fois l'appli installée ou fermé avec ×.
+- Après une grosse modification, changer `CACHE = "mariage-v1"` en `v2` dans `sw.js` pour forcer la mise à jour.

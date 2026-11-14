@@ -16,6 +16,7 @@ try {
   if (code) localStorage.setItem("mariage-code", code);
   else code = localStorage.getItem("mariage-code") || "";
 } catch (e) {}
+if (code && !params.get("code")) history.replaceState(null, "", "?code=" + encodeURIComponent(code));
 
 let data = null;         // ce que mon_espace renvoie
 let onglet = "programme";
@@ -52,12 +53,22 @@ function demoEspace(c) {
   };
 }
 
+// Dernières données reçues, gardées sur le téléphone : l'appli marche même sans réseau
+const CLE_COPIE = () => "mariage-copie-" + code;
+function lireCopie() { try { return JSON.parse(localStorage.getItem(CLE_COPIE()) || "null"); } catch (e) { return null; } }
+function garderCopie() { try { localStorage.setItem(CLE_COPIE(), JSON.stringify(data)); } catch (e) {} }
+let horsLigne = false;
+
 async function charger() {
   if (!code) { data = null; return dessiner(); }
+  if (!data) { data = lireCopie(); if (data) dessiner(); }
   try {
-    data = DEMO_MODE ? demoEspace(code) : await rpc("mon_espace", { p_code: code });
+    const frais = DEMO_MODE ? demoEspace(code) : await rpc("mon_espace", { p_code: code });
+    data = frais; horsLigne = false;
     erreur = data ? "" : "inconnu";
+    if (data) garderCopie();
   } catch (e) {
+    horsLigne = !!data;
     erreur = data ? "" : "reseau";   // si on avait déjà des données, on les garde
   }
   dessiner();
@@ -68,6 +79,7 @@ async function cocher(id, fait) {
   if (!t) return;
   t.fait = fait; t.fait_par = fait ? data.moi.prenom : null; t.fait_le = fait ? new Date().toISOString() : null;
   dessiner();
+  garderCopie();
   if (DEMO_MODE) {
     let c = {};
     try { c = JSON.parse(localStorage.getItem("mariage-demo-coches") || "{}"); } catch (e) {}
@@ -79,7 +91,7 @@ async function cocher(id, fait) {
     const ok = await rpc("cocher", { p_code: code, p_tache: id, p_fait: fait });
     if (!ok) throw new Error("refusé");
   } catch (e) {
-    t.fait = !fait;
+    t.fait = !fait; garderCopie(); dessiner();
     alerte("Pas enregistré : vérifie ta connexion et réessaie.");
   }
 }
@@ -198,6 +210,25 @@ function vueEquipe() {
   }).join("")}</ul>`;
 }
 
+// ---------- Installer l'appli sur l'écran d'accueil ----------
+const installee = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const iphone = /iphone|ipad|ipod/i.test(navigator.userAgent);
+let invite = null;   // Android : la proposition d'installation de Chrome
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); invite = e; dessiner(); });
+function bandeauInstall() {
+  let ferme = false;
+  try { ferme = localStorage.getItem("mariage-install-ferme") === "1"; } catch (e) {}
+  if (installee() || ferme) return "";
+  const comment = invite ? `<button class="btn plein" type="button" data-installer>Installer</button>`
+    : iphone ? `<small>Touche <b>Partager</b> <span aria-hidden="true">⎙</span> en bas de Safari, puis <b>Sur l'écran d'accueil</b>.</small>`
+    : `<small>Dans le menu du navigateur (⋮), choisis <b>Installer l'application</b> ou <b>Ajouter à l'écran d'accueil</b>.</small>`;
+  return `<section class="install">
+    <img src="icon-192.png" alt="" width="44" height="44">
+    <div><b>Mets l'appli sur ton écran d'accueil</b>${comment}</div>
+    <button class="fermer" type="button" data-fermer-install aria-label="Fermer">×</button>
+  </section>`;
+}
+
 function dessiner() {
   if (!data) { app.innerHTML = ecranCode(); return; }
   const reste = data.taches.filter(t => !t.fait).length;
@@ -206,6 +237,8 @@ function dessiner() {
   if (!onglets.some(o => o[0] === onglet)) onglet = "programme";
   const vue = onglet === "taches" ? vueTaches() : onglet === "equipe" ? vueEquipe() : vueProgramme();
   app.innerHTML = `${entete()}
+    ${horsLigne ? `<p class="horsligne">Pas de réseau : tu vois la dernière version enregistrée.</p>` : ""}
+    ${bandeauInstall()}
     <section class="bonjour">Salut <b>${esc(data.moi.prenom)}</b> <span class="pastille ${data.moi.admin ? "or" : ""}">${esc(data.moi.role)}</span></section>
     <nav class="onglets" role="tablist">${onglets.map(([id, nom, n]) =>
       `<button type="button" role="tab" class="onglet" data-onglet="${id}" aria-selected="${id === onglet}">${nom}${n ? ` <span class="nb">${n}</span>` : ""}</button>`).join("")}
@@ -224,6 +257,11 @@ function alerte(txt) {
 app.addEventListener("click", async e => {
   const o = e.target.closest("[data-onglet]");
   if (o) { onglet = o.dataset.onglet; dessiner(); window.scrollTo({ top: 0 }); return; }
+  if (e.target.closest("[data-installer]") && invite) { invite.prompt(); invite = null; return; }
+  if (e.target.closest("[data-fermer-install]")) {
+    try { localStorage.setItem("mariage-install-ferme", "1"); } catch (err) {}
+    dessiner(); return;
+  }
   const c = e.target.closest("[data-copier]");
   if (c) {
     try { await navigator.clipboard.writeText(c.dataset.copier); alerte("Lien copié ✅"); }
@@ -250,3 +288,5 @@ charger();
 setInterval(() => { if (!document.hidden && data) charger(); }, 30000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden && data) charger(); });
 setInterval(() => { if (data && onglet === "programme" && jourJ() === 0) dessiner(); }, 60000);
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
