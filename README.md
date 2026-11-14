@@ -30,6 +30,21 @@ Les tables sont fermées (RLS activé, aucune règle) : la clé publique ne perm
 
 Ne partage jamais un lien admin, et ne mets jamais la clé secrète de Supabase dans le code.
 
+En plus :
+- **CSP** (`Content-Security-Policy` dans `index.html`) : la page ne peut exécuter que ses propres scripts et ne parle qu'à Supabase. Pas de JavaScript écrit dans la page, pas de script externe.
+- **`esc()`** : tout texte venant de la base (prénoms, titres, lieux…) est échappé avant d'être affiché, donc un texte piégé reste du texte.
+- **Pas de référent** (`no-referrer`) : le lien avec le code n'est jamais envoyé aux autres sites (Google Maps, WhatsApp…).
+
+## Tests automatiques
+
+À chaque push et à chaque pull request, GitHub lance les tests (onglet **Actions**, et ✅ ou ❌ en bas de chaque PR). Un ❌ veut dire qu'une modification a cassé quelque chose ou ouvert une faille : ne pas fusionner avant de comprendre pourquoi.
+
+- `tests/appli.spec.js` : l'appli sur un téléphone, en mode démo : chacun ne voit que ce qui le concerne, cocher, lien inconnu refusé, texte piégé non exécuté, hors-ligne.
+- `tests/securite.spec.js` : lit le code : pas de clé secrète, pas de script externe, CSP présente, `esc()` partout, tables fermées dans `schema.sql`.
+- `tests/base.sql` : installe la base sur un Postgres vide et joue le rôle de n'importe qui avec la clé publique : impossible de lire les tables, de voir la tâche ou le code d'un autre, de cocher pour un autre, de s'ajouter en admin.
+
+En local : `npm install` puis `npm test`.
+
 ## Brancher Supabase
 
 1. Crée un nouveau projet sur supabase.com (séparé de celui de l'EVG).

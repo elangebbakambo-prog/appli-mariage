@@ -1,0 +1,11 @@
+{
+  "name": "appli-mariage",
+  "private": true,
+  "description": "Appli du mariage. Le site n'a besoin d'aucune installation : ce fichier sert seulement aux tests automatiques.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}
