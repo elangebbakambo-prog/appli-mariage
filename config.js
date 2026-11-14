@@ -4,7 +4,7 @@
 // Tant que supabaseUrl est vide, l'appli tourne en MODE DÉMO (données de demo.js).
 window.MARIAGE = {
   maries: "Chaïna & …",   // affiché en grand en haut
-  date: "2026-12-12",          // jour du mariage (AAAA-MM-JJ), sert au compte à rebours et à « maintenant »
+  date: "2026-12-19",          // jour du mariage (AAAA-MM-JJ), sert au compte à rebours et à « maintenant »
   supabaseUrl: "https://evwxybkpdzqwndndcdnf.supabase.co",
   supabaseKey: "sb_publishable_0Q7V3bYlNEN2icImW11cPQ_dTQ4KJ42"
 };

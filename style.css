@@ -204,3 +204,120 @@ html.plein-ecran, html.plein-ecran body { overflow: hidden; }
 #cam .cam-send{ all:unset; cursor:pointer; padding:14px 22px; border-radius:999px; background:var(--accent); color:#fff; font:600 1rem var(--corps); box-shadow:0 6px 22px rgba(31,77,58,.4); }
 #cam .cam-send[disabled]{ opacity:.6; cursor:default; }
 #cam .cam-edit .cam-hint{ bottom:calc(92px + env(safe-area-inset-bottom,0px)); }
+
+/* =====================================================================
+   THÈME NOËL : fond vert sapin, guirlande lumineuse, neige qui tombe,
+   rouge et or. Les cartes restent claires pour bien lire.
+   ===================================================================== */
+:root { --sapin: #123527; --sapin2: #1B4A37; --rouge-vif: #B3122E; --or-vif: #D9B25F; }
+html, body { background: var(--sapin); }
+body {
+  background-color: var(--sapin);
+  background-image:
+    radial-gradient(ellipse 90% 45% at 50% 0%, rgba(217,178,95,.22), transparent 70%),
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,.10) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 70% 60%, rgba(255,255,255,.07) 0 2px, transparent 2.5px),
+    radial-gradient(circle at 45% 85%, rgba(217,178,95,.10) 0 1.5px, transparent 2px);
+  background-size: 100% 100%, 90px 90px, 130px 130px, 110px 110px;
+}
+main { padding-top: max(34px, calc(env(safe-area-inset-top) + 24px)); position: relative; z-index: 1; }
+
+/* Guirlande lumineuse en haut de l'écran */
+.guirlande { position: fixed; top: 0; left: 0; right: 0; z-index: 30; height: 26px; display: flex; justify-content: space-around; pointer-events: none;
+  padding-top: env(safe-area-inset-top); }
+.guirlande::before { content: ""; position: absolute; left: -5%; right: -5%; top: calc(env(safe-area-inset-top) - 10px); height: 22px;
+  border-bottom: 2px solid #0A2219; border-radius: 0 0 50% 50% / 0 0 100% 100%; }
+.guirlande i { position: relative; top: 9px; width: 9px; height: 13px; border-radius: 50% 50% 45% 45%; background: var(--rouge-vif);
+  box-shadow: 0 0 10px 2px rgba(179,18,46,.8); animation: brille 1.6s ease-in-out infinite alternate; }
+.guirlande i::before { content: ""; position: absolute; top: -4px; left: 2px; width: 5px; height: 4px; background: #3B3B3B; border-radius: 1px; }
+.guirlande i:nth-child(4n+2) { background: var(--or-vif); box-shadow: 0 0 10px 2px rgba(217,178,95,.85); animation-delay: .4s; }
+.guirlande i:nth-child(4n+3) { background: #3FBF6E; box-shadow: 0 0 10px 2px rgba(63,191,110,.75); animation-delay: .8s; }
+.guirlande i:nth-child(4n) { background: #F4F1E8; box-shadow: 0 0 10px 2px rgba(255,255,255,.8); animation-delay: 1.2s; }
+.guirlande i:nth-child(odd) { top: 13px; }
+@keyframes brille { from { opacity: .35; filter: saturate(.6); } to { opacity: 1; } }
+
+/* Neige qui tombe */
+.neige { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.neige i { position: absolute; top: -20px; color: rgba(255,255,255,.75); font-style: normal; font-size: 12px; animation: tombe 14s linear infinite; }
+.neige i:nth-child(3n) { font-size: 16px; color: rgba(255,255,255,.55); }
+.neige i:nth-child(1) { left: 3%; animation-delay: 0s; animation-duration: 13s; }
+.neige i:nth-child(2) { left: 8%; animation-delay: -6s; animation-duration: 17s; }
+.neige i:nth-child(3) { left: 13%; animation-delay: -2s; animation-duration: 15s; }
+.neige i:nth-child(4) { left: 18%; animation-delay: -9s; animation-duration: 12s; }
+.neige i:nth-child(5) { left: 23%; animation-delay: -4s; animation-duration: 18s; }
+.neige i:nth-child(6) { left: 28%; animation-delay: -11s; animation-duration: 14s; }
+.neige i:nth-child(7) { left: 33%; animation-delay: -1s; animation-duration: 16s; }
+.neige i:nth-child(8) { left: 38%; animation-delay: -7s; animation-duration: 13s; }
+.neige i:nth-child(9) { left: 43%; animation-delay: -3s; animation-duration: 19s; }
+.neige i:nth-child(10) { left: 48%; animation-delay: -12s; animation-duration: 15s; }
+.neige i:nth-child(11) { left: 53%; animation-delay: -5s; animation-duration: 12s; }
+.neige i:nth-child(12) { left: 58%; animation-delay: -8s; animation-duration: 17s; }
+.neige i:nth-child(13) { left: 63%; animation-delay: -2.5s; animation-duration: 14s; }
+.neige i:nth-child(14) { left: 68%; animation-delay: -10s; animation-duration: 18s; }
+.neige i:nth-child(15) { left: 73%; animation-delay: -6.5s; animation-duration: 13s; }
+.neige i:nth-child(16) { left: 78%; animation-delay: -1.5s; animation-duration: 16s; }
+.neige i:nth-child(17) { left: 83%; animation-delay: -9.5s; animation-duration: 12s; }
+.neige i:nth-child(18) { left: 88%; animation-delay: -4.5s; animation-duration: 19s; }
+.neige i:nth-child(19) { left: 93%; animation-delay: -13s; animation-duration: 15s; }
+.neige i:nth-child(20) { left: 97%; animation-delay: -7.5s; animation-duration: 14s; }
+.neige i:nth-child(21) { left: 6%; animation-delay: -14s; animation-duration: 20s; }
+.neige i:nth-child(22) { left: 41%; animation-delay: -16s; animation-duration: 21s; }
+.neige i:nth-child(23) { left: 66%; animation-delay: -15s; animation-duration: 20s; }
+.neige i:nth-child(24) { left: 91%; animation-delay: -17s; animation-duration: 22s; }
+@keyframes tombe {
+  0% { transform: translate(0, -20px) rotate(0); }
+  50% { transform: translate(18px, 50vh) rotate(180deg); }
+  100% { transform: translate(-10px, 105vh) rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) { .neige { display: none; } .guirlande i { animation: none; } }
+
+/* En-tête */
+.hero { padding-top: 10px; }
+.eyebrow { color: var(--or-vif); }
+h1 { color: #FFF8EC; text-shadow: 0 0 22px rgba(217,178,95,.45); }
+.hero::after { content: "✦  🎄  ✦"; color: var(--or-vif); letter-spacing: .4em; font-size: 1rem; margin-top: 10px; }
+.date { color: rgba(255,248,236,.8); }
+.date b { color: #FFD7DD !important; background: var(--rouge-vif); padding: 1px 9px; border-radius: 999px; }
+
+/* Cartes : claires, avec un liseré rouge et or façon ruban */
+.carte, .bonjour, .install, .perso, .envoi, .corps, .tache label {
+  border-color: rgba(217,178,95,.55);
+  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+}
+.carte, .bonjour { border-top: 4px solid var(--rouge-vif); }
+.carte h2, .qr h3 { color: var(--rouge-vif); }
+
+/* Onglets façon ruban rouge */
+.onglets { background: var(--rouge-vif); border: 2px solid var(--or-vif); box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+.onglet { color: rgba(255,255,255,.85); }
+.onglet[aria-selected=true] { background: #FFF8EC; color: var(--rouge-vif); }
+.nb { background: var(--or-vif); color: #3A2A08; }
+
+/* Textes posés directement sur le vert */
+.vue > .petit, .vue > .vide, .vue > .resume, .vue > .sous, .vide, .resume, .sous, .live-tete h2, .live-tete small { color: #FFF8EC; }
+.resume b { color: var(--or-vif); }
+.sous { color: var(--or-vif); }
+.vue > .petit { color: rgba(255,248,236,.8); }
+.heure { color: #FFF8EC; }
+.heure small { color: rgba(255,248,236,.65); }
+.moment::before { background: rgba(217,178,95,.5); }
+.corps::before { background: var(--rouge-vif); border-color: var(--or-vif); }
+.corps h3 { color: var(--accent); }
+.moment.en-cours .corps { border-color: var(--rouge-vif); box-shadow: 0 0 0 3px rgba(179,18,46,.35), 0 6px 18px rgba(0,0,0,.2); }
+.moment.en-cours .corps::before { background: var(--or-vif); }
+.live { background: var(--rouge-vif); }
+.tache input:checked + .case { background: var(--rouge-vif); border-color: var(--rouge-vif); }
+.barre i { background: var(--rouge-vif); }
+.err { color: #FFC9D1; }
+.carte .err { color: #A23B2C; }
+.demo { background: rgba(255,243,214,.92); }
+.lien { color: var(--rouge-vif); }
+
+/* Boutons */
+.btn.plein { background: var(--rouge-vif); border-color: var(--rouge-vif); }
+.poster { background: var(--rouge-vif); border: 2px solid var(--or-vif); box-shadow: 0 8px 26px rgba(179,18,46,.55); }
+.vignette { border: 2px solid rgba(217,178,95,.6); }
+#cam .cam-send { background: var(--rouge-vif); box-shadow: 0 6px 22px rgba(179,18,46,.5); }
+#cam .cam-shut .pr { stroke: var(--rouge-vif); }
+#cam.rec .cam-shut::before { background: var(--rouge-vif); }
+#story .st-tete b { color: var(--or-vif); }
