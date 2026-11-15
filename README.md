@@ -11,7 +11,8 @@ Récupération des souvenirs et montages : à venir.
 ## Ce qu'il y a dans l'appli
 
 - **Organisation** (lien perso) : Programme (vendredi et samedi, par jour), Live, Tâches par section (« Vendredi · Salle principale », « Photos de groupe », « Samedi · Ton rôle »…), Fiches (fiche DJ, bar, menu, influenceuse), Équipe pour les admins.
-- **Invités** (QR code) : Live, Programme (seulement les moments publics), Ma table (« Trouve ta table » : on tape son prénom ou son nom, sans se soucier des accents), Menu (les fiches publiques).
+- **Invités** (QR code) : Live, Programme (seulement les moments publics), Menu (les fiches publiques).
+- **Trouve ta table** : case tout en haut de l’accueil, pour les invités comme pour l’équipe. On tape son prénom ou son nom (sans se soucier des accents), le résultat s’ouvre dans une pop-up avec le dessin de la table.
 - **Places à table** : « Trouve ta table » (et la carte « Ta place » en haut du Programme) dessine la table, ronde ou en rectangle (`les_tables.forme`), avec la place de chacun (`plan_table.place`), qui est en face et à côté. Une personne avec un lien perso voit sa place si `personnes.nom_plan` = son nom dans le plan.
 - **Photos de l'équipe** : chacun ajoute la sienne (touche le rond à côté de « Salut »), les admins peuvent changer celle des autres dans Équipe. Les photos vont dans le stockage `live`, jamais sur GitHub.
 - **Groupes** : une personne peut être dans des groupes (`groupes`, ex. `{Team,Filles}`). Un moment, une tâche ou une fiche avec `pour = {Filles}` est vu par tout le groupe.

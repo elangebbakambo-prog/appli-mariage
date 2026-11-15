@@ -81,47 +81,70 @@ async function chargerInfos() {
   dessiner();
 }
 
-// ---------- Trouve ta table ----------
-function vueTable() {
-  const R = INFOS.resultats;
-  let res = "";
-  if (INFOS.q.trim().length >= 2 && R) {
-    res = R.length ? R.map(r => `<article class="carte table-trouvee">
-        <p class="eyebrow">${esc(r.nom)}</p>
-        <p class="num-table">${r.detail && r.detail.nom && !/^Table \d+$/.test(r.detail.nom) ? esc(r.detail.nom) : `Table <b>${esc(r.table)}</b>`}</p>
-        ${r.detail ? dessinTable(r.detail, r.nom) : r.voisins && r.voisins.length ? `<p class="petit">Avec ${esc(r.voisins.join(", "))}</p>` : ""}
-      </article>`).join("")
-      : `<p class="vide">Personne à ce nom. Essaie avec ton nom de famille, ou demande aux témoins 😊</p>`;
-  } else if (INFOS.q.trim().length === 1) res = `<p class="vide">Encore une lettre…</p>`;
-  return `<section class="carte">
-      <h2>Trouve ta table 🍽️</h2>
-      <p>Tape ton prénom ou ton nom de famille.</p>
-      <input id="champTable" type="search" placeholder="Ex. Chloé" autocomplete="off" value="${esc(INFOS.q)}" enterkeyhint="search">
-    </section>
-    <div id="resultatsTable">${res}</div>`;
+// ---------- Trouve ta table : petite case en haut de l'accueil, résultat dans une pop-up ----------
+function carteRecherche() {
+  if (!LIVE.invite) return "";
+  return `<form class="carte recherche-table" id="formTable" role="search">
+      <label for="champTable"><span aria-hidden="true">🍽️</span> <b>Trouve ta table</b> <small>et qui est à côté de toi</small></label>
+      <div class="ligne">
+        <input id="champTable" type="search" placeholder="Ton prénom ou ton nom" autocomplete="off" value="${esc(INFOS.q)}" enterkeyhint="search">
+        <button class="btn plein" type="submit">Voir</button>
+      </div>
+    </form>`;
 }
-function chercherTable(q) {
-  INFOS.q = q; clearTimeout(INFOS.timer);
-  const zone = () => { const z = document.getElementById("resultatsTable"); if (z) z.outerHTML = vueTable().split("</section>").pop(); };
-  if (q.trim().length < 2) { INFOS.resultats = null; return zone(); }
-  INFOS.timer = setTimeout(async () => {
-    try { INFOS.resultats = DEMO_MODE ? demoTable(q) : await rpc("trouver_table", { p_code: LIVE.invite, p_nom: q }); }
-    catch (e) { INFOS.resultats = null; alerte("Pas de réseau : réessaie dans un instant."); }
-    if (INFOS.q === q) zone();
-  }, 250);
+function popupTable(html) {
+  let ov = document.getElementById("popupTable");
+  if (!ov) {
+    ov = document.createElement("div"); ov.id = "popupTable"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-modal", "true"); ov.setAttribute("aria-label", "Ta table");
+    ov.addEventListener("click", e => { if (e.target === ov || e.target.closest("[data-fermer-popup]")) fermerPopupTable(); });
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML = `<div class="popup-boite">
+      <button type="button" class="popup-x" data-fermer-popup aria-label="Fermer">✕</button>
+      ${html}
+    </div>`;
+  ov.hidden = false; document.documentElement.classList.add("plein-ecran");
+  const x = ov.querySelector(".popup-x"); if (x) x.focus();
 }
-document.addEventListener("input", e => { if (e.target.id === "champTable") chercherTable(e.target.value); });
+function fermerPopupTable() {
+  const ov = document.getElementById("popupTable"); if (!ov) return;
+  ov.hidden = true; ov.innerHTML = ""; document.documentElement.classList.remove("plein-ecran");
+}
+function resultatsTable(R) {
+  if (!R.length) return `<h2>Personne à ce nom 🤔</h2><p>Essaie avec ton nom de famille, ou demande aux témoins 😊</p>`;
+  return R.map(r => `<article class="table-trouvee">
+      <p class="eyebrow">${esc(r.nom)}</p>
+      <p class="num-table">${r.detail && r.detail.nom && !/^Table \d+$/.test(r.detail.nom) ? esc(r.detail.nom) : `Table <b>${esc(r.table)}</b>`}</p>
+      ${r.detail ? dessinTable(r.detail, r.nom) : r.voisins && r.voisins.length ? `<p class="petit">Avec ${esc(r.voisins.join(", "))}</p>` : ""}
+    </article>`).join(`<hr class="popup-sep">`);
+}
+async function chercherTable(q) {
+  INFOS.q = q;
+  if (q.trim().length < 2) return alerte("Tape au moins 2 lettres de ton prénom ou de ton nom.");
+  try {
+    const R = DEMO_MODE ? demoTable(q) : await rpc("trouver_table", { p_code: LIVE.invite, p_nom: q });
+    popupTable(resultatsTable(R || []));
+  } catch (e) { alerte("Pas de réseau : réessaie dans un instant."); }
+}
+document.addEventListener("submit", e => {
+  if (e.target.id !== "formTable") return;
+  e.preventDefault();
+  const c = document.getElementById("champTable");
+  if (c) { c.blur(); chercherTable(c.value); }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") fermerPopupTable(); });
 
 // ---------- Ce que voit un invité : 4 onglets ----------
 let ongletInvite = "live";
 function vueInvite() {
   const D = INFOS.data || { moments: [], fiches: [] };
-  const onglets = [["live", "Live"], ["programme", "Programme"], ["table", "Ma table"], ["menu", "Menu"]];
+  const onglets = [["live", "Live"], ["programme", "Programme"], ["menu", "Menu"]];
+  if (!onglets.some(o => o[0] === ongletInvite)) ongletInvite = "live";
   const vue = ongletInvite === "programme" ? frise(D.moments, false)
-    : ongletInvite === "table" ? vueTable()
     : ongletInvite === "menu" ? vueFiches(D.fiches, "Le menu arrive bientôt.")
     : vueLive(true);
-  return `<nav class="onglets" role="tablist">${onglets.map(([id, nom]) =>
+  return `${prenomLive() ? carteRecherche() : ""}
+    <nav class="onglets" role="tablist">${onglets.map(([id, nom]) =>
       `<button type="button" role="tab" class="onglet" data-onglet-invite="${id}" aria-selected="${id === ongletInvite}">${nom}</button>`).join("")}
     </nav>
     ${INFOS.etat === "erreur" && ongletInvite !== "live" ? `<p class="err">Impossible de charger : vérifie ta connexion.</p>` : ""}
@@ -133,7 +156,6 @@ document.addEventListener("click", e => {
   ongletInvite = o.dataset.ongletInvite;
   dessiner(); window.scrollTo({ top: 0 });
   if (ongletInvite === "live") chargerLive(); else chargerInfos();
-  if (ongletInvite === "table") { const c = document.getElementById("champTable"); if (c && !INFOS.q) c.focus(); }
 });
 
 // ---------- Mode démo ----------

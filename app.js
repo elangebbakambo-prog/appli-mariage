@@ -238,12 +238,13 @@ function dessiner() {
   if (data.moi.admin && data.equipe) onglets.push(["equipe", "Équipe"]);
   if (!onglets.some(o => o[0] === onglet)) onglet = "programme";
   const vue = onglet === "taches" ? vueTaches() : onglet === "equipe" ? carteQr() + vueEquipe()
-    : onglet === "live" ? vueLive(false) : onglet === "fiches" ? vueFiches(data.fiches) + vueTable() : vueProgramme();
+    : onglet === "live" ? vueLive(false) : onglet === "fiches" ? vueFiches(data.fiches) : vueProgramme();
   app.innerHTML = `${entete()}
     ${horsLigne ? `<p class="horsligne">Pas de réseau : tu vois la dernière version enregistrée.</p>` : ""}
     ${bandeauInstall()}
     <section class="bonjour">${avatar(data.moi, 46, 'data-photo=""')}<div>Salut <b>${esc(data.moi.prenom)}</b> <span class="pastille ${data.moi.admin ? "or" : ""}">${esc(data.moi.role)}</span>
       ${data.moi.photo ? "" : `<button type="button" class="lien" data-photo="">📷 Ajoute ta photo</button>`}</div></section>
+    ${carteRecherche()}
     <nav class="onglets ${onglets.length > 4 ? "serres" : ""}" role="tablist">${onglets.map(([id, nom, n]) =>
       `<button type="button" role="tab" class="onglet" data-onglet="${id}" aria-selected="${id === onglet}">${nom}${n ? ` <span class="nb">${n}</span>` : ""}</button>`).join("")}
     </nav>

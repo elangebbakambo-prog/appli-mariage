@@ -151,17 +151,20 @@ test("L'organisation a un onglet Live, et les admins le QR code des invités", a
 });
 
 // ---------- Version 2 : programme des invités, Trouve ta table, fiches ----------
-test("Un invité trouve sa table en tapant son prénom, sans les accents", async ({ page }) => {
+test("Un invité trouve sa table dès l'accueil, dans une pop-up, sans se soucier des accents", async ({ page }) => {
   await page.goto("/?invite=invites");
   await page.fill("#champPrenom", "Léa"); await page.click("#formPrenom button");
-  await page.click("[data-onglet-invite=table]");
-  await page.fill("#champTable", "chloe");
-  await expect(page.locator(".num-table")).toHaveText(/Table\s*1/);
-  await expect(page.locator(".table-trouvee")).toContainText("Léa Martin");
-  await page.fill("#champTable", "petit");
-  await expect(page.locator(".table-trouvee")).toHaveCount(2);
-  await page.fill("#champTable", "zzz");
-  await expect(page.getByText("Personne à ce nom")).toBeVisible();
+  await expect(page.locator("#champTable")).toBeVisible();                  // en haut de l'accueil, sans changer d'onglet
+  await page.fill("#champTable", "chloe"); await page.press("#champTable", "Enter");
+  await expect(page.locator("#popupTable .num-table")).toHaveText(/Table\s*1/);
+  await expect(page.locator("#popupTable")).toContainText("Léa Martin");
+  await page.click("#popupTable [data-fermer-popup]");
+  await expect(page.locator("#popupTable")).toBeHidden();
+  await page.fill("#champTable", "petit"); await page.click("#formTable button");
+  await expect(page.locator("#popupTable .table-trouvee")).toHaveCount(2);
+  await page.keyboard.press("Escape");
+  await page.fill("#champTable", "zzz"); await page.press("#champTable", "Enter");
+  await expect(page.locator("#popupTable")).toContainText("Personne à ce nom");
 });
 
 test("Le programme des invités ne montre que les moments publics", async ({ page }) => {
@@ -200,16 +203,21 @@ test("Un texte piégé dans une fiche reste du texte", async ({ page }) => {
 });
 
 // ---------- Version 3 : dessin des tables, ma place, photos ----------
-test("Le résultat de « Trouve ta table » montre la table, qui est en face et à côté", async ({ page }) => {
+test("La pop-up montre la table, qui est en face et à côté", async ({ page }) => {
   await page.goto("/?invite=invites");
   await page.fill("#champPrenom", "Léa"); await page.click("#formPrenom button");
-  await page.click("[data-onglet-invite=table]");
-  await page.fill("#champTable", "hugo");
-  await expect(page.locator(".t-siege")).toHaveCount(4);
-  await expect(page.locator(".t-siege.moi")).toHaveCount(1);
+  await page.fill("#champTable", "hugo"); await page.press("#champTable", "Enter");
+  await expect(page.locator("#popupTable .t-siege")).toHaveCount(4);
+  await expect(page.locator("#popupTable .t-siege.moi")).toHaveCount(1);
   // Table rectangle de 4 : Paul (1), Hugo (2) en haut ; Témoin Un (3), Marc (4) en bas → Hugo est en face de Marc, à côté de Paul
-  await expect(page.locator(".t-phrase")).toContainText("En face de toi : Marc Leroy");
-  await expect(page.locator(".t-phrase")).toContainText("À côté de toi : Paul Petit");
+  await expect(page.locator("#popupTable .t-phrase")).toContainText("En face de toi : Marc Leroy");
+  await expect(page.locator("#popupTable .t-phrase")).toContainText("À côté de toi : Paul Petit");
+});
+
+test("L'équipe a aussi « Trouve ta table » en haut de l'accueil", async ({ page }) => {
+  await page.goto("/?code=temoin");
+  await page.fill("#champTable", "paul"); await page.press("#champTable", "Enter");
+  await expect(page.locator("#popupTable .num-table")).toHaveText(/Table\s*2/);
 });
 
 test("Un témoin voit sa place en haut de son programme", async ({ page }) => {
