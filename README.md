@@ -8,6 +8,16 @@ Appli web pour le jour J, en HTML, CSS et JavaScript sans framework, avec Supaba
 
 Récupération des souvenirs et montages : à venir.
 
+## Ce qu'il y a dans l'appli
+
+- **Organisation** (lien perso) : Programme (vendredi et samedi, par jour), Live, Tâches par section (« Vendredi · Salle principale », « Photos de groupe », « Samedi · Ton rôle »…), Fiches (fiche DJ, bar, menu, influenceuse), Équipe pour les admins.
+- **Invités** (QR code) : Live, Programme (seulement les moments publics), Ma table (« Trouve ta table » : on tape son prénom ou son nom, sans se soucier des accents), Menu (les fiches publiques).
+- **Groupes** : une personne peut être dans des groupes (`groupes`, ex. `{Team,Filles}`). Un moment, une tâche ou une fiche avec `pour = {Filles}` est vu par tout le groupe.
+
+## Les vraies données (privées)
+
+Les noms des invités et le plan de table ne sont **jamais** sur GitHub (dépôt public). Ils sont dans un fichier `donnees-mariage.sql` gardé à part, à coller dans Supabase → SQL Editor après `schema.sql`. Le `.gitignore` bloque ce fichier par sécurité.
+
 ## Les fichiers
 
 | Fichier | Rôle |
@@ -16,6 +26,7 @@ Récupération des souvenirs et montages : à venir.
 | `style.css` | Le style. **Les couleurs du mariage sont en haut**, dans `:root` |
 | `app.js` | La logique : programme, tâches, équipe |
 | `live.js` | Le live : caméra, envoi, fil, stories |
+| `infos.js` | Programme (frise par jour), fiches, « Trouve ta table », onglets des invités |
 | `vendor/qrcode.js` | Générateur de QR code (copié ici plutôt que chargé depuis un autre site) |
 | `config.js` | Prénoms des mariés, date, connexion Supabase |
 | `demo.js` | Données d'exemple, utilisées tant que Supabase n'est pas branché |

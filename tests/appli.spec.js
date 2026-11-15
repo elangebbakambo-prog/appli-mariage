@@ -27,8 +27,9 @@ test("Un témoin ne voit que ce qui le concerne", async ({ page }) => {
   await expect(page.getByText("Salut")).toContainText("Témoin 1");
   await expect(page.locator("[data-onglet=equipe]")).toHaveCount(0);   // pas d'onglet Équipe
   await page.click("[data-onglet=taches]");
-  await expect(page.locator(".tache")).toHaveCount(3);
+  await expect(page.locator(".tache")).toHaveCount(4);
   await expect(page.getByText("Tester le son")).toHaveCount(0);        // tâche du DJ
+  await expect(page.locator(".sous", { hasText: "Vendredi · Salle principale" })).toBeVisible();  // tâche du groupe Team
 });
 
 test("Le DJ ne voit pas l'installation réservée aux témoins", async ({ page }) => {
@@ -147,4 +148,53 @@ test("L'organisation a un onglet Live, et les admins le QR code des invités", a
   await page.click("[data-onglet=equipe]");
   await expect(page.locator(".qr img")).toBeVisible();
   await expect(page.locator(".qr [data-copier]")).toHaveAttribute("data-copier", /\?invite=invites$/);
+});
+
+// ---------- Version 2 : programme des invités, Trouve ta table, fiches ----------
+test("Un invité trouve sa table en tapant son prénom, sans les accents", async ({ page }) => {
+  await page.goto("/?invite=invites");
+  await page.fill("#champPrenom", "Léa"); await page.click("#formPrenom button");
+  await page.click("[data-onglet-invite=table]");
+  await page.fill("#champTable", "chloe");
+  await expect(page.locator(".num-table")).toHaveText(/Table\s*1/);
+  await expect(page.locator(".table-trouvee")).toContainText("Léa Martin");
+  await page.fill("#champTable", "petit");
+  await expect(page.locator(".table-trouvee")).toHaveCount(2);
+  await page.fill("#champTable", "zzz");
+  await expect(page.getByText("Personne à ce nom")).toBeVisible();
+});
+
+test("Le programme des invités ne montre que les moments publics", async ({ page }) => {
+  await page.goto("/?invite=invites");
+  await page.fill("#champPrenom", "Léa"); await page.click("#formPrenom button");
+  await page.click("[data-onglet-invite=programme]");
+  await expect(page.locator(".moment")).toHaveCount(5);
+  await expect(page.getByText("Installation de la salle")).toHaveCount(0);
+  await page.click("[data-onglet-invite=menu]");
+  await expect(page.locator(".fiche summary")).toHaveText(/Le bar/);
+  await expect(page.getByText("Fiche DJ")).toHaveCount(0);
+});
+
+test("Le DJ a sa fiche ; un témoin voit le bar mais pas la fiche DJ", async ({ page }) => {
+  await page.goto("/?code=dj");
+  await page.click("[data-onglet=fiches]");
+  await expect(page.locator(".fiche summary", { hasText: "Fiche DJ" })).toBeVisible();
+  await expect(page.locator(".fiche-corps b").first()).toHaveText("21h00");
+  await page.goto("/?code=temoin");
+  await page.click("[data-onglet=fiches]");
+  await expect(page.locator(".fiche summary", { hasText: "Le bar" })).toBeVisible();
+  await expect(page.getByText("Fiche DJ")).toHaveCount(0);
+});
+
+test("Un texte piégé dans une fiche reste du texte", async ({ page }) => {
+  await page.route("**/demo.js", async r => {
+    const body = (await (await r.fetch()).text()).replace("Sans alcool", `<img src=x onerror=window.pirate=1> **<b>gras</b>**`);
+    r.fulfill({ contentType: "text/javascript", body });
+  });
+  await page.goto("/?invite=invites");
+  await page.fill("#champPrenom", "Léa"); await page.click("#formPrenom button");
+  await page.click("[data-onglet-invite=menu]");
+  await expect(page.locator(".fiche-corps")).toContainText("<img src=x");
+  expect(await page.evaluate(() => window.pirate)).toBeUndefined();
+  await expect(page.locator(".fiche-corps img")).toHaveCount(0);
 });

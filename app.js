@@ -39,8 +39,9 @@ async function rpc(nom, corps) {
 }
 
 // Même règle que la fonction SQL concerne()
-const concerne = (pour, role, prenom) =>
-  !pour || !pour.length || pour.some(r => [role.toLowerCase(), prenom.toLowerCase(), "tous"].includes(r.trim().toLowerCase()));
+const concerne = (pour, role, prenom, groupes) =>
+  !pour || !pour.length || pour.some(r => [role.toLowerCase(), prenom.toLowerCase(), "tous", ...(groupes || []).map(g => g.toLowerCase())]
+    .includes(r.trim().toLowerCase()));
 
 function demoEspace(c) {
   const D = window.DEMO;
@@ -48,11 +49,13 @@ function demoEspace(c) {
   if (!m) return null;
   let coches = {};
   try { coches = JSON.parse(localStorage.getItem("mariage-demo-coches") || "{}"); } catch (e) {}
-  const mien = t => m.admin || (t.prenom ? t.prenom === m.prenom : t.role.toLowerCase() === m.role.toLowerCase());
+  const mien = t => m.admin || (t.prenom ? t.prenom === m.prenom : t.role ? t.role.toLowerCase() === m.role.toLowerCase()
+    : (t.pour || []).length > 0 && concerne(t.pour, m.role, m.prenom, m.groupes));
   return {
     moi: { prenom: m.prenom, role: m.role, admin: m.admin },
-    moments: D.moments.filter(x => m.admin || concerne(x.pour, m.role, m.prenom)),
+    moments: D.moments.filter(x => m.admin || concerne(x.pour, m.role, m.prenom, m.groupes)),
     taches: D.taches.filter(mien).map(t => Object.assign({ pour: t.prenom || t.role, fait: false }, t, coches[t.id] || {})),
+    fiches: (D.fiches || []).filter(f => m.admin || f.public || (f.pour.length && concerne(f.pour, m.role, m.prenom))),
     equipe: m.admin ? D.personnes : null,
     invite: "invites"
   };
@@ -65,7 +68,7 @@ function garderCopie() { try { localStorage.setItem(CLE_COPIE(), JSON.stringify(
 let horsLigne = false;
 
 async function charger() {
-  if (modeInvite()) { dessiner(); return chargerLive(); }
+  if (modeInvite()) { dessiner(); chargerInfos(); return chargerLive(); }
   if (!code) { data = null; return dessiner(); }
   if (!data) { data = lireCopie(); if (data) dessiner(); }
   try {
@@ -109,18 +112,6 @@ function jourJ() {
   const j = new Date(CFG.date + "T00:00:00");
   return Math.round((j - auj) / 86400000);   // 0 = aujourd'hui
 }
-const minutes = t => { const [h, m] = String(t).split(":").map(Number); return h * 60 + m; };
-function etatMoment(x, liste, i) {
-  if (jourJ() !== 0) return "";
-  const n = new Date(), maintenant = n.getHours() * 60 + n.getMinutes();
-  const debut = minutes(x.debut);
-  const suivant = liste[i + 1] ? minutes(liste[i + 1].debut) : 24 * 60;
-  const fin = x.fin ? minutes(x.fin) : suivant;
-  if (maintenant >= debut && maintenant < fin) return "en-cours";
-  if (maintenant >= fin) return "passe";
-  return "";
-}
-
 // ---------- Affichage ----------
 function entete() {
   const j = jourJ();
@@ -151,24 +142,7 @@ function ecranCode() {
   </section>`;
 }
 
-function vueProgramme() {
-  const L = data.moments;
-  if (!L.length) return `<p class="vide">Le programme arrive bientôt.</p>`;
-  return `<ol class="frise">${L.map((x, i) => {
-    const etat = etatMoment(x, L, i);
-    const pour = data.moi.admin && x.pour && x.pour.length ? `<span class="pastille">${esc(x.pour.join(", "))}</span>` : "";
-    return `<li class="moment ${etat}">
-      <div class="heure">${hhmm(x.debut)}${x.fin ? `<small>→ ${hhmm(x.fin)}</small>` : ""}</div>
-      <div class="corps">
-        ${etat === "en-cours" ? `<span class="live">Maintenant</span>` : ""}
-        <h3>${esc(x.titre)}</h3>
-        ${x.lieu ? `<a class="lieu" href="${maps(x.lieu)}" target="_blank" rel="noopener">📍 ${esc(x.lieu)}</a>` : ""}
-        ${x.details ? `<p>${esc(x.details)}</p>` : ""}
-        ${pour}
-      </div>
-    </li>`;
-  }).join("")}</ol>`;
-}
+function vueProgramme() { return frise(data.moments, data.moi.admin); }
 
 function ligneTache(t) {
   const qui = t.fait && t.fait_par ? ` · fait par ${esc(t.fait_par)}` : "";
@@ -179,7 +153,7 @@ function ligneTache(t) {
       <span class="txt">
         <b>${esc(t.titre)}</b>
         ${t.details ? `<small>${esc(t.details)}</small>` : ""}
-        <small class="meta">${t.heure ? "🕒 " + hhmm(t.heure) : "Avant le jour J"}${data.moi.admin ? " · " + esc(t.pour) : ""}${qui}</small>
+        <small class="meta">${t.heure ? "🕒 " + hhmm(t.heure) : ""}${data.moi.admin && t.pour ? (t.heure ? " · " : "") + esc([].concat(t.pour).join(", ")) : ""}${qui}</small>
       </span>
     </label>
   </li>`;
@@ -189,10 +163,19 @@ function vueTaches() {
   const T = data.taches;
   if (!T.length) return `<p class="vide">Rien à faire pour toi pour l'instant. Profite ! 🥂</p>`;
   const reste = T.filter(t => !t.fait).length;
-  const avant = T.filter(t => !t.heure), jour = T.filter(t => t.heure);
-  const bloc = (titre, L) => L.length ? `<h3 class="sous">${titre}</h3><ul class="taches">${L.map(ligneTache).join("")}</ul>` : "";
+  // Par section (« Vendredi · Salle principale »…), dans l'ordre d'arrivée ; sinon « Avant le jour J » / « Le jour J »
+  const groupes = new Map();
+  for (const t of T) {
+    const g = t.section || (t.heure ? "Le jour J" : "Avant le jour J");
+    if (!groupes.has(g)) groupes.set(g, []);
+    groupes.get(g).push(t);
+  }
+  const parHeure = L => L.slice().sort((a, b) => (a.heure ? 1 : 0) - (b.heure ? 1 : 0) || String(a.heure || "").localeCompare(String(b.heure || "")));
   return `<p class="resume">${reste ? `<b>${reste}</b> à faire sur ${T.length}` : "Tout est fait 🎉"}</p>
-    ${bloc("Avant le jour J", avant)}${bloc("Le jour J", jour)}`;
+    ${[...groupes].map(([g, L]) => {
+      const faites = L.filter(t => t.fait).length;
+      return `<h3 class="sous">${esc(g)} <small>${faites}/${L.length}</small></h3><ul class="taches">${parHeure(L).map(ligneTache).join("")}</ul>`;
+    }).join("")}`;
 }
 
 function vueEquipe() {
@@ -201,7 +184,9 @@ function vueEquipe() {
     Ne partage pas les liens admin (ils voient et cochent tout).</p>
   <ul class="equipe">${data.equipe.map(p => {
     const lien = base + "?code=" + encodeURIComponent(p.code);
-    const sesTaches = data.taches.filter(t => t.pour === p.prenom || (t.pour || "").toLowerCase() === p.role.toLowerCase());
+    // Ses tâches perso (ou de son rôle) ; les tâches de groupe (Team, Photo…) ne comptent pas ici
+    const pourTxt = t => (Array.isArray(t.pour) ? t.pour.join(", ") : String(t.pour || "")).toLowerCase();
+    const sesTaches = data.taches.filter(t => pourTxt(t) === p.prenom.toLowerCase() || pourTxt(t) === p.role.toLowerCase());
     const faites = sesTaches.filter(t => t.fait).length;
     const msg = `Salut ${p.prenom} ! Voici ton lien pour le mariage de ${CFG.maries} : ton programme et tes tâches sont dedans 👉 ${lien}`;
     const tel = (p.tel || "").replace(/[^\d]/g, "").replace(/^0/, "33");
@@ -238,23 +223,26 @@ function bandeauInstall() {
 
 function dessiner() {
   if (cam && cam.el && !cam.el.hidden) return;   // ne pas redessiner sous la caméra
+  const actif = document.activeElement;            // ni pendant qu'on tape
+  if (actif && ["champTable", "champPrenom", "champCode"].includes(actif.id)) return;
   if (modeInvite()) {
-    app.innerHTML = `${entete()}${bandeauInstall()}<section class="vue">${vueLive(true)}</section>`;
+    app.innerHTML = `${entete()}${bandeauInstall()}${vueInvite()}`;
     return;
   }
   if (!data) { app.innerHTML = ecranCode(); return; }
   const reste = data.taches.filter(t => !t.fait).length;
   const onglets = [["programme", "Programme"], ["taches", data.moi.admin ? "Tâches" : "Mes tâches", reste]];
   if (data.invite) onglets.splice(1, 0, ["live", "Live"]);
+  if (data.fiches && data.fiches.length) onglets.push(["fiches", "Fiches"]);
   if (data.moi.admin && data.equipe) onglets.push(["equipe", "Équipe"]);
   if (!onglets.some(o => o[0] === onglet)) onglet = "programme";
   const vue = onglet === "taches" ? vueTaches() : onglet === "equipe" ? carteQr() + vueEquipe()
-    : onglet === "live" ? vueLive(false) : vueProgramme();
+    : onglet === "live" ? vueLive(false) : onglet === "fiches" ? vueFiches(data.fiches) : vueProgramme();
   app.innerHTML = `${entete()}
     ${horsLigne ? `<p class="horsligne">Pas de réseau : tu vois la dernière version enregistrée.</p>` : ""}
     ${bandeauInstall()}
     <section class="bonjour">Salut <b>${esc(data.moi.prenom)}</b> <span class="pastille ${data.moi.admin ? "or" : ""}">${esc(data.moi.role)}</span></section>
-    <nav class="onglets" role="tablist">${onglets.map(([id, nom, n]) =>
+    <nav class="onglets ${onglets.length > 4 ? "serres" : ""}" role="tablist">${onglets.map(([id, nom, n]) =>
       `<button type="button" role="tab" class="onglet" data-onglet="${id}" aria-selected="${id === onglet}">${nom}${n ? ` <span class="nb">${n}</span>` : ""}</button>`).join("")}
     </nav>
     <section class="vue">${vue}</section>`;
@@ -301,7 +289,7 @@ app.addEventListener("submit", e => {
 charger();
 setInterval(() => { if (!document.hidden && data) charger(); }, 30000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden && data) charger(); });
-setInterval(() => { if (data && onglet === "programme" && jourJ() === 0) dessiner(); }, 60000);
+setInterval(() => { if (jourJ() <= 0 && ((data && onglet === "programme") || (modeInvite() && ongletInvite === "programme"))) dessiner(); }, 60000);
 // Le live : les nouveaux posts toutes les 15 s (seulement les nouveautés, c'est tout petit)
 setInterval(() => { if (!document.hidden && !story && (modeInvite() || (data && onglet === "live"))) chargerLive(); }, 15000);
 

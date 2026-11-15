@@ -3,3 +3,7 @@ node_modules/
 .env
 test-results/
 playwright-report/
+
+# Données privées du mariage (noms des invités) : jamais sur GitHub
+supabase/donnees-*.sql
+donnees-*.sql

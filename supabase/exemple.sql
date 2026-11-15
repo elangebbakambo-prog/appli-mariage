@@ -26,3 +26,17 @@ insert into taches (titre, details, heure, role) values
 
 insert into taches (titre, heure, personne_id)
   select 'Préparer le discours des témoins', null, id from personnes where prenom = 'Témoin 1';
+
+-- Version 2 : groupes, moments publics, tâches par section, fiches, plan de table (exemples)
+update personnes set groupes = '{Team}' where prenom in ('Témoin 1', 'Témoin 2', 'Elange');
+update moments set public = true where titre in ('Cérémonie', 'Vin d''honneur', 'Entrée des mariés', 'Dîner', 'Ouverture du bal');
+
+insert into taches (titre, section, pour) values
+  ('Installer les sapins de la salle', 'Vendredi · Salle principale', '{Team}');
+
+insert into fiches (titre, icone, contenu, pour, public, ordre) values
+  ('Fiche DJ', '🎧', E'## Déroulé\n- 21h00 : entrée des mariés\n## Blacklist\n- Pas de **macarena**', '{DJ}', false, 1),
+  ('Le bar et le menu', '🥂', E'## Le bar\n- Soupe de champagne\n- Sans alcool', '{}', true, 2);
+
+insert into plan_table (nom, table_no) values
+  ('Léa Martin', 1), ('Chloé Durand', 1), ('Paul Petit', 2), ('Hugo Petit', 2);

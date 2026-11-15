@@ -43,7 +43,35 @@ create table if not exists taches (
   fait_le     timestamptz
 );
 
+-- Ajouts (version 2) : groupes de personnes, jour des moments, sections des tâches
+alter table personnes add column if not exists groupes text[] not null default '{}';  -- ex. {Team,Filles}
+alter table moments   add column if not exists jour date not null default '2026-12-19';
+alter table moments   add column if not exists public boolean not null default false; -- visible par les invités
+alter table taches    add column if not exists section text;                          -- ex. « Vendredi · Salle principale »
+alter table taches    add column if not exists pour text[] not null default '{}';     -- groupes ou prénoms
+
+-- Les fiches (fiche DJ, bar et menu…) : texte simple, « ## » = titre, « - » = puce
+create table if not exists fiches (
+  id      bigint generated always as identity primary key,
+  titre   text not null,
+  icone   text,
+  contenu text not null default '',
+  pour    text[] not null default '{}',    -- vide = seulement les admins (sauf si public)
+  public  boolean not null default false,  -- visible par les invités (QR code)
+  ordre   int not null default 0
+);
+
+-- Le plan de table, pour « Trouve ta table »
+create table if not exists plan_table (
+  id       bigint generated always as identity primary key,
+  nom      text not null,
+  table_no int not null
+);
+
 alter table personnes enable row level security;
+alter table fiches     enable row level security;
+alter table plan_table enable row level security;
+revoke all on fiches, plan_table from anon, authenticated;
 alter table moments   enable row level security;
 alter table taches    enable row level security;
 revoke all on personnes, moments, taches from anon, authenticated;
@@ -52,12 +80,26 @@ revoke all on personnes, moments, taches from anon, authenticated;
 -- 2. Qui voit quoi
 -- ---------------------------------------------------------------
 
--- Est-ce que ce « pour » (liste de rôles ou de prénoms) concerne cette personne ?
-create or replace function concerne(p_pour text[], p_role text, p_prenom text)
+-- Est-ce que ce « pour » (liste de rôles, de prénoms ou de groupes) concerne cette personne ?
+create or replace function concerne(p_pour text[], p_role text, p_prenom text, p_groupes text[])
 returns boolean language sql immutable as $$
   select cardinality(p_pour) = 0
       or exists (select 1 from unnest(p_pour) r
-                 where lower(trim(r)) in (lower(p_role), lower(p_prenom), 'tous'));
+                 where lower(trim(r)) in (lower(p_role), lower(p_prenom), 'tous')
+                    or lower(trim(r)) in (select lower(g) from unnest(p_groupes) g));
+$$;
+create or replace function concerne(p_pour text[], p_role text, p_prenom text)
+returns boolean language sql immutable as $$
+  select concerne(p_pour, p_role, p_prenom, '{}'::text[]);
+$$;
+
+-- Une tâche est pour moi si elle porte mon nom, mon rôle, ou un de mes groupes (champ « pour »)
+create or replace function tache_pour_moi(t taches, m personnes)
+returns boolean language sql immutable as $$
+  select t.personne_id = m.id
+      or (t.personne_id is null and (
+            (t.role is not null and lower(t.role) = lower(m.role))
+         or (cardinality(t.pour) > 0 and concerne(t.pour, m.role, m.prenom, m.groupes))));
 $$;
 
 -- Tout ce qu'une personne a le droit de voir, à partir de son code
@@ -73,20 +115,26 @@ begin
     'invite', (select valeur from reglages where cle = 'code_invites'),
 
     'moments', coalesce((
-      select jsonb_agg(to_jsonb(x) order by x.debut, x.id)
+      select jsonb_agg(to_jsonb(x) order by x.jour, x.debut, x.id)
       from moments x
-      where m.admin or concerne(x.pour, m.role, m.prenom)), '[]'::jsonb),
+      where m.admin or concerne(x.pour, m.role, m.prenom, m.groupes)), '[]'::jsonb),
+
+    'fiches', coalesce((
+      select jsonb_agg(jsonb_build_object('id', f.id, 'titre', f.titre, 'icone', f.icone,
+                                          'contenu', f.contenu, 'public', f.public)
+                       order by f.ordre, f.id)
+      from fiches f
+      where m.admin or f.public or (cardinality(f.pour) > 0 and concerne(f.pour, m.role, m.prenom, m.groupes))), '[]'::jsonb),
 
     'taches', coalesce((
       select jsonb_agg(
                jsonb_build_object('id', t.id, 'titre', t.titre, 'details', t.details, 'heure', t.heure,
                                   'fait', t.fait, 'fait_par', t.fait_par, 'fait_le', t.fait_le,
-                                  'pour', coalesce(p.prenom, t.role))
-               order by t.heure nulls last, t.id)
+                                  'section', t.section,
+                                  'pour', coalesce(p.prenom, t.role, array_to_string(t.pour, ', ')))
+               order by t.id)
       from taches t left join personnes p on p.id = t.personne_id
-      where m.admin
-         or t.personne_id = m.id
-         or (t.personne_id is null and lower(t.role) = lower(m.role))), '[]'::jsonb),
+      where m.admin or tache_pour_moi(t, m)), '[]'::jsonb),
 
     -- La liste de l'équipe et des liens : seulement pour les admins
     'equipe', case when m.admin then (
@@ -110,8 +158,7 @@ begin
          fait_par = case when p_fait then m.prenom end,
          fait_le  = case when p_fait then now() end
    where t.id = p_tache
-     and (m.admin or t.personne_id = m.id
-          or (t.personne_id is null and lower(t.role) = lower(m.role)));
+     and (m.admin or tache_pour_moi(t, m));
   get diagnostics n = row_count;
   return n > 0;
 end $$;
@@ -223,3 +270,47 @@ begin
              with check (bucket_id = ''live'' and public.code_invites_ok((storage.foldername(name))[1]))';
   end if;
 end $$;
+
+-- ===============================================================
+-- 4. Pour les invités (QR code) : programme public, fiches publiques, « Trouve ta table »
+-- ===============================================================
+
+create or replace function infos_invites(p_code text)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+begin
+  if not code_invites_ok(p_code) then return null; end if;
+  return jsonb_build_object(
+    'moments', coalesce((select jsonb_agg(jsonb_build_object('id', x.id, 'jour', x.jour, 'debut', x.debut, 'fin', x.fin,
+                                                             'titre', x.titre, 'lieu', x.lieu, 'details', x.details)
+                                          order by x.jour, x.debut, x.id)
+                         from moments x where x.public), '[]'::jsonb),
+    'fiches', coalesce((select jsonb_agg(jsonb_build_object('id', f.id, 'titre', f.titre, 'icone', f.icone, 'contenu', f.contenu)
+                                         order by f.ordre, f.id)
+                        from fiches f where f.public), '[]'::jsonb));
+end $$;
+
+-- Sans accents ni majuscules, pour chercher « chloe » et trouver « Chloé »
+create or replace function sans_accent(t text)
+returns text language sql immutable as $$
+  select lower(translate(coalesce(t, ''), 'àâäáãéèêëíìîïóòôöõúùûüçñÀÂÄÁÃÉÈÊËÍÌÎÏÓÒÔÖÕÚÙÛÜÇÑ',
+                                          'aaaaaeeeeiiiiooooouuuucnaaaaaeeeeiiiiooooouuuucn'));
+$$;
+
+-- On tape (au moins 2 lettres de) son prénom ou son nom : on reçoit sa table et ses voisins (8 réponses max)
+create or replace function trouver_table(p_code text, p_nom text)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare q text := sans_accent(trim(p_nom));
+begin
+  if not code_invites_ok(p_code) then return null; end if;
+  if char_length(q) < 2 then return '[]'::jsonb; end if;
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+             'nom', p.nom, 'table', p.table_no,
+             'voisins', (select coalesce(jsonb_agg(v.nom order by v.id), '[]'::jsonb)
+                         from plan_table v where v.table_no = p.table_no and v.id <> p.id))
+           order by p.nom)
+    from (select * from plan_table where sans_accent(nom) like '%' || q || '%' order by nom limit 8) p), '[]'::jsonb);
+end $$;
+
+revoke execute on function infos_invites(text), trouver_table(text, text) from public;
+grant  execute on function infos_invites(text), trouver_table(text, text) to anon, authenticated;

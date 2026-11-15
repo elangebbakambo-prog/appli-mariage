@@ -35,7 +35,7 @@ begin
   if e->'equipe' <> 'null'::jsonb then raise exception 'ÉCHEC : un témoin voit les liens de l''équipe'; end if;
   if e::text like '%Tester le son%' then raise exception 'ÉCHEC : un témoin voit la tâche du DJ'; end if;
   if e::text like '%' || c_dj || '%' then raise exception 'ÉCHEC : un témoin voit le code du DJ'; end if;
-  if jsonb_array_length(e->'taches') <> 3 then raise exception 'ÉCHEC : le témoin devrait avoir 3 tâches'; end if;
+  if jsonb_array_length(e->'taches') <> 4 then raise exception 'ÉCHEC : le témoin devrait avoir 4 tâches (dont 1 du groupe Team)'; end if;
 
   -- 4. Le DJ ne voit pas le moment réservé aux témoins et au traiteur
   if mon_espace(c_dj)::text like '%Installation de la salle%' then raise exception 'ÉCHEC : le DJ voit un moment qui ne le concerne pas'; end if;
@@ -92,6 +92,35 @@ begin
     begin perform live_poster(inv, 'Spam', 'photo', inv || '/' || u || '.jpg', inv || '/' || u || '-m.jpg');
       raise exception 'ÉCHEC : pas d''anti-spam';
     exception when raise_exception then if sqlerrm like 'ÉCHEC%' then raise; end if; end;
+  end;
+
+  -- 8. Version 2 : groupes, fiches, programme des invités, « Trouve ta table »
+  declare inv text; r jsonb;
+  begin
+    select code into inv from codes where prenom = 'INVITES';
+    if mon_espace(c_dj)::text like '%Installer les sapins%' then raise exception 'ÉCHEC : le DJ voit une tâche du groupe Team'; end if;
+    if mon_espace(c_temoin)::text not like '%Installer les sapins%' then raise exception 'ÉCHEC : un témoin (Team) ne voit pas la tâche du groupe'; end if;
+    if not cocher(c_temoin, (select (x->>'id')::bigint from jsonb_array_elements(mon_espace(c_mariee)->'taches') x where x->>'titre' like 'Installer les sapins%'), true) then
+      raise exception 'ÉCHEC : un membre du groupe ne peut pas cocher la tâche du groupe'; end if;
+    if cocher(c_dj, (select (x->>'id')::bigint from jsonb_array_elements(mon_espace(c_mariee)->'taches') x where x->>'titre' like 'Installer les sapins%'), false) then
+      raise exception 'ÉCHEC : le DJ peut cocher une tâche du groupe Team'; end if;
+
+    if mon_espace(c_dj)::text not like '%Fiche DJ%' then raise exception 'ÉCHEC : le DJ ne voit pas sa fiche'; end if;
+    if mon_espace(c_temoin)::text like '%Fiche DJ%' then raise exception 'ÉCHEC : un témoin voit la fiche DJ'; end if;
+    if mon_espace(c_temoin)::text not like '%Le bar et le menu%' then raise exception 'ÉCHEC : la fiche publique est cachée'; end if;
+
+    if infos_invites('faux') is not null or infos_invites(c_temoin) is not null then raise exception 'ÉCHEC : infos invités sans le code invités'; end if;
+    r := infos_invites(inv);
+    if r::text like '%Fiche DJ%' then raise exception 'ÉCHEC : les invités voient la fiche DJ'; end if;
+    if r::text like '%Installation de la salle%' then raise exception 'ÉCHEC : les invités voient un moment privé'; end if;
+    if r::text not like '%Cérémonie%' or r::text not like '%Le bar et le menu%' then raise exception 'ÉCHEC : le programme invités est incomplet'; end if;
+
+    if trouver_table('faux', 'lea') is not null then raise exception 'ÉCHEC : trouver_table sans le code invités'; end if;
+    if jsonb_array_length(trouver_table(inv, 'e')) <> 0 then raise exception 'ÉCHEC : 1 lettre suffit pour lister les invités'; end if;
+    r := trouver_table(inv, 'CHLOE');
+    if jsonb_array_length(r) <> 1 or (r->0->>'table')::int <> 1 or r->0->'voisins' <> '["Léa Martin"]'::jsonb then
+      raise exception 'ÉCHEC : « chloe » doit trouver Chloé Durand, table 1, avec Léa Martin : %', r; end if;
+    if jsonb_array_length(trouver_table(inv, 'petit')) <> 2 then raise exception 'ÉCHEC : la recherche par nom de famille'; end if;
   end;
 
   raise notice '✅ Base : tous les tests de sécurité passent';

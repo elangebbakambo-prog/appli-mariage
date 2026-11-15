@@ -321,3 +321,35 @@ h1 { color: #FFF8EC; text-shadow: 0 0 22px rgba(217,178,95,.45); }
 #cam .cam-shut .pr { stroke: var(--rouge-vif); }
 #cam.rec .cam-shut::before { background: var(--rouge-vif); }
 #story .st-tete b { color: var(--or-vif); }
+
+/* Onglets serrés (5 onglets sur petit écran) */
+.onglets.serres { gap: 2px; padding: 4px; }
+.onglets.serres .onglet { font-size: .78rem; padding: 9px 2px; }
+.onglets.serres .nb { min-width: 16px; padding: 0 4px; font-size: .68rem; }
+
+/* Programme : titre de chaque jour */
+.titre-jour { list-style: none; margin: 4px 0 12px; }
+.titre-jour h3 { margin: 0; font: 600 1.35rem var(--titre); color: var(--or-vif, var(--or)); text-align: center; }
+.sous small { font: 500 .8rem var(--corps); opacity: .7; margin-left: 6px; }
+
+/* Fiches (DJ, bar, menu…) */
+.fiches { display: flex; flex-direction: column; gap: 10px; }
+.fiche { background: var(--carte); border: 1px solid rgba(217,178,95,.55); border-radius: 16px; box-shadow: 0 6px 18px rgba(0,0,0,.18); overflow: hidden; }
+.fiche summary { cursor: pointer; list-style: none; padding: 14px 16px; font: 600 1.35rem var(--titre); color: var(--accent); display: flex; align-items: center; gap: 10px; }
+.fiche summary::-webkit-details-marker { display: none; }
+.fiche summary::after { content: "▾"; margin-left: auto; font-size: 1rem; color: var(--doux); transition: transform .2s; }
+.fiche[open] summary::after { transform: rotate(180deg); }
+.fiche[open] summary { border-bottom: 1px solid var(--trait); }
+.ico-fiche { font-size: 1.3rem; }
+.fiche-corps { padding: 4px 16px 14px; font-size: .95rem; }
+.fiche-corps h4 { margin: 14px 0 6px; font: 600 1.15rem var(--titre); color: var(--rouge-vif, var(--rouge)); }
+.fiche-corps ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.fiche-corps p { margin: 6px 0; }
+
+/* Trouve ta table */
+#champTable { width: 100%; margin-top: 10px; padding: 13px 14px; border: 1px solid var(--trait); border-radius: 12px; font: inherit; font-size: 1.05rem; background: var(--fond); }
+#resultatsTable { display: flex; flex-direction: column; gap: 10px; }
+.table-trouvee { text-align: center; }
+.table-trouvee .eyebrow { color: var(--doux); }
+.num-table { margin: 2px 0; font: 600 1.6rem var(--titre); color: var(--accent); }
+.num-table b { font-size: 2.6rem; color: var(--rouge-vif, var(--rouge)); }
