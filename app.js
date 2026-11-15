@@ -52,7 +52,8 @@ function demoEspace(c) {
   const mien = t => m.admin || (t.prenom ? t.prenom === m.prenom : t.role ? t.role.toLowerCase() === m.role.toLowerCase()
     : (t.pour || []).length > 0 && concerne(t.pour, m.role, m.prenom, m.groupes));
   return {
-    moi: { prenom: m.prenom, role: m.role, admin: m.admin },
+    moi: { prenom: m.prenom, role: m.role, admin: m.admin, photo: m.photo || null },
+    ma_table: m.nom_plan ? (() => { const p = (D.plan || []).find(x => x.nom === m.nom_plan); return p ? { nom: p.nom, detail: demoDetail(p.table) } : null; })() : null,
     moments: D.moments.filter(x => m.admin || concerne(x.pour, m.role, m.prenom, m.groupes)),
     taches: D.taches.filter(mien).map(t => Object.assign({ pour: t.prenom || t.role, fait: false }, t, coches[t.id] || {})),
     fiches: (D.fiches || []).filter(f => m.admin || f.public || (f.pour.length && concerne(f.pour, m.role, m.prenom))),
@@ -142,7 +143,7 @@ function ecranCode() {
   </section>`;
 }
 
-function vueProgramme() { return frise(data.moments, data.moi.admin); }
+function vueProgramme() { return carteMaTable() + frise(data.moments, data.moi.admin); }
 
 function ligneTache(t) {
   const qui = t.fait && t.fait_par ? ` · fait par ${esc(t.fait_par)}` : "";
@@ -191,7 +192,7 @@ function vueEquipe() {
     const msg = `Salut ${p.prenom} ! Voici ton lien pour le mariage de ${CFG.maries} : ton programme et tes tâches sont dedans 👉 ${lien}`;
     const tel = (p.tel || "").replace(/[^\d]/g, "").replace(/^0/, "33");
     return `<li class="perso">
-      <div class="qui"><b>${esc(p.prenom)}</b> <span class="pastille ${p.admin ? "or" : ""}">${esc(p.role)}${p.admin ? " · admin" : ""}</span></div>
+      <div class="qui">${avatar(p, 40, data.moi.admin ? `data-photo="${esc(p.prenom)}"` : "")}<b>${esc(p.prenom)}</b> <span class="pastille ${p.admin ? "or" : ""}">${esc(p.role)}${p.admin ? " · admin" : ""}</span></div>
       ${sesTaches.length ? `<div class="barre" title="${faites} sur ${sesTaches.length}"><i style="width:${Math.round(100 * faites / sesTaches.length)}%"></i></div>
         <small>${faites} / ${sesTaches.length} tâches faites</small>` : `<small>Aucune tâche</small>`}
       <div class="actions">
@@ -237,11 +238,12 @@ function dessiner() {
   if (data.moi.admin && data.equipe) onglets.push(["equipe", "Équipe"]);
   if (!onglets.some(o => o[0] === onglet)) onglet = "programme";
   const vue = onglet === "taches" ? vueTaches() : onglet === "equipe" ? carteQr() + vueEquipe()
-    : onglet === "live" ? vueLive(false) : onglet === "fiches" ? vueFiches(data.fiches) : vueProgramme();
+    : onglet === "live" ? vueLive(false) : onglet === "fiches" ? vueFiches(data.fiches) + vueTable() : vueProgramme();
   app.innerHTML = `${entete()}
     ${horsLigne ? `<p class="horsligne">Pas de réseau : tu vois la dernière version enregistrée.</p>` : ""}
     ${bandeauInstall()}
-    <section class="bonjour">Salut <b>${esc(data.moi.prenom)}</b> <span class="pastille ${data.moi.admin ? "or" : ""}">${esc(data.moi.role)}</span></section>
+    <section class="bonjour">${avatar(data.moi, 46, 'data-photo=""')}<div>Salut <b>${esc(data.moi.prenom)}</b> <span class="pastille ${data.moi.admin ? "or" : ""}">${esc(data.moi.role)}</span>
+      ${data.moi.photo ? "" : `<button type="button" class="lien" data-photo="">📷 Ajoute ta photo</button>`}</div></section>
     <nav class="onglets ${onglets.length > 4 ? "serres" : ""}" role="tablist">${onglets.map(([id, nom, n]) =>
       `<button type="button" role="tab" class="onglet" data-onglet="${id}" aria-selected="${id === onglet}">${nom}${n ? ` <span class="nb">${n}</span>` : ""}</button>`).join("")}
     </nav>

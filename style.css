@@ -353,3 +353,36 @@ h1 { color: #FFF8EC; text-shadow: 0 0 22px rgba(217,178,95,.45); }
 .table-trouvee .eyebrow { color: var(--doux); }
 .num-table { margin: 2px 0; font: 600 1.6rem var(--titre); color: var(--accent); }
 .num-table b { font-size: 2.6rem; color: var(--rouge-vif, var(--rouge)); }
+
+/* Photos (avatars) */
+.avatar { all: unset; flex: 0 0 auto; width: var(--t); height: var(--t); border-radius: 50%; overflow: hidden; display: grid; place-items: center;
+  background: var(--rouge-vif, var(--accent)); color: #fff; font: 600 calc(var(--t) * .38) var(--corps); box-shadow: 0 0 0 2px var(--or-vif, var(--or)); }
+.avatar:not([disabled]) { cursor: pointer; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatar:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.bonjour { gap: 12px; }
+.bonjour > div { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: 1; }
+.bonjour .lien { margin-left: 0; font-size: .82rem; }
+.perso .qui { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* Dessin des tables */
+.ma-table summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ma-table summary::-webkit-details-marker { display: none; }
+.ma-table summary span { font: 600 1.3rem var(--titre); color: var(--rouge-vif, var(--accent)); }
+.ma-table summary b { font: 600 1.15rem var(--titre); }
+.t-dessin { margin-top: 8px; }
+.t-dessin svg { width: 100%; max-width: 360px; display: block; margin: 0 auto; }
+.t-table { fill: var(--rouge-vif, #8E1B2B); stroke: var(--or-vif, #B8975A); stroke-width: 3; }
+.t-num { fill: #FFF8EC; font: 600 34px var(--titre); text-anchor: middle; }
+.t-siege circle { fill: #FFF8EC; stroke: var(--accent); stroke-width: 2; }
+.t-siege text { fill: var(--accent); font: 600 13px var(--corps); text-anchor: middle; }
+.t-siege.moi circle { fill: var(--or-vif, #D9B25F); stroke: var(--rouge-vif, #B3122E); stroke-width: 4; }
+.t-siege.moi text { fill: #3A2A08; }
+.t-phrase { text-align: center; margin: 8px 0; line-height: 1.6; }
+.t-phrase b { color: var(--rouge-vif, var(--accent)); }
+.t-liste { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: .85rem; text-align: left; }
+.t-liste li { display: flex; align-items: center; gap: 6px; }
+.t-liste span { flex: 0 0 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: #F3ECE0; color: var(--accent); font-size: .68rem; font-weight: 600; }
+.t-liste li.moi { font-weight: 700; color: var(--rouge-vif, var(--accent)); }
+.t-liste li.moi span { background: var(--or-vif, var(--or)); color: #3A2A08; }
+.vue > .carte + #resultatsTable, .fiches + .carte { margin-top: 14px; }

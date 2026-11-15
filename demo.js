@@ -4,7 +4,7 @@ window.DEMO = {
   personnes: [
     { prenom: "La mariée", role: "Mariée", admin: true, tel: "", code: "mariee" },
     { prenom: "Elange", role: "Organisation", admin: true, tel: "", code: "elange", groupes: ["Team"] },
-    { prenom: "Témoin 1", role: "Témoin", admin: false, tel: "", code: "temoin", groupes: ["Team"] },
+    { prenom: "Témoin 1", role: "Témoin", admin: false, tel: "", code: "temoin", groupes: ["Team"], nom_plan: "Témoin Un" },
     { prenom: "Témoin 2", role: "Témoin", admin: false, tel: "", code: "temoin2", groupes: ["Team"] },
     { prenom: "DJ", role: "DJ", admin: false, tel: "", code: "dj" },
     { prenom: "Traiteur", role: "Traiteur", admin: false, tel: "", code: "traiteur" }
@@ -33,6 +33,8 @@ window.DEMO = {
   ],
   plan: [
     { nom: "Léa Martin", table: 1 }, { nom: "Chloé Durand", table: 1 },
-    { nom: "Paul Petit", table: 2 }, { nom: "Hugo Petit", table: 2 }
-  ]
+    { nom: "Paul Petit", table: 2 }, { nom: "Hugo Petit", table: 2 },
+    { nom: "Témoin Un", table: 2 }, { nom: "Marc Leroy", table: 2 }
+  ],
+  tables: { 1: { forme: "ronde" }, 2: { forme: "rect" } }
 };

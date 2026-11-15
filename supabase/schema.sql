@@ -111,7 +111,8 @@ begin
   if not found then return null; end if;
 
   return jsonb_build_object(
-    'moi', jsonb_build_object('prenom', m.prenom, 'role', m.role, 'admin', m.admin),
+    'moi', jsonb_build_object('prenom', m.prenom, 'role', m.role, 'admin', m.admin, 'photo', m.photo),
+    'ma_table', ma_table(m),
     'invite', (select valeur from reglages where cle = 'code_invites'),
 
     'moments', coalesce((
@@ -139,7 +140,7 @@ begin
     -- La liste de l'équipe et des liens : seulement pour les admins
     'equipe', case when m.admin then (
       select jsonb_agg(jsonb_build_object('prenom', prenom, 'role', role, 'admin', admin,
-                                          'tel', tel, 'code', code)
+                                          'tel', tel, 'code', code, 'photo', photo)
                        order by admin desc, role, prenom)
       from personnes) end
   );
@@ -314,3 +315,77 @@ end $$;
 
 revoke execute on function infos_invites(text), trouver_table(text, text) from public;
 grant  execute on function infos_invites(text), trouver_table(text, text) to anon, authenticated;
+
+-- ===============================================================
+-- 5. Les places à table (dessin de la table) et les photos de l'équipe
+-- ===============================================================
+
+-- La forme de chaque table : « ronde », « rect » (rectangle, deux rangées face à face) ou « honneur »
+create table if not exists les_tables (
+  no    int primary key,
+  nom   text,                                   -- ex. « Table d'honneur » (sinon « Table 3 »)
+  forme text not null default 'ronde' check (forme in ('ronde', 'rect', 'honneur'))
+);
+alter table plan_table add column if not exists place int;   -- numéro de la place autour de la table
+alter table personnes  add column if not exists nom_plan text; -- son nom tel qu'écrit dans le plan de table
+alter table personnes  add column if not exists photo text;    -- chemin de sa photo dans le stockage « live »
+alter table les_tables enable row level security;
+revoke all on les_tables from anon, authenticated;
+
+-- Une table complète : son nom, sa forme et les places dans l'ordre (usage interne)
+create or replace function details_table(p_no int)
+returns jsonb language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'table', p_no,
+    'nom', coalesce(t.nom, 'Table ' || p_no),
+    'forme', coalesce(t.forme, 'ronde'),
+    'places', coalesce((
+      select jsonb_agg(jsonb_build_object('place', v.rang, 'nom', v.nom) order by v.rang)
+      from (select pt.nom, row_number() over (order by pt.place nulls last, pt.id) as rang
+            from plan_table pt where pt.table_no = p_no) v), '[]'::jsonb))
+  from (select 1) x left join les_tables t on t.no = p_no;
+$$;
+revoke execute on function details_table(int) from public, anon, authenticated;
+
+-- « Trouve ta table » renvoie maintenant aussi le dessin de la table
+create or replace function trouver_table(p_code text, p_nom text)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare q text := sans_accent(trim(p_nom));
+begin
+  if not code_invites_ok(p_code) then return null; end if;
+  if char_length(q) < 2 then return '[]'::jsonb; end if;
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+             'nom', p.nom, 'table', p.table_no,
+             'voisins', (select coalesce(jsonb_agg(v.nom order by v.place nulls last, v.id), '[]'::jsonb)
+                         from plan_table v where v.table_no = p.table_no and v.id <> p.id),
+             'detail', details_table(p.table_no))
+           order by p.nom)
+    from (select * from plan_table where sans_accent(nom) like '%' || q || '%' order by nom limit 8) p), '[]'::jsonb);
+end $$;
+
+-- Ma place à moi (pour ceux qui ont un lien perso et dont le nom est relié au plan de table)
+create or replace function ma_table(m personnes)
+returns jsonb language sql stable security definer set search_path = public as $$
+  select jsonb_build_object('nom', p.nom, 'detail', details_table(p.table_no))
+  from plan_table p where m.nom_plan is not null and p.nom = m.nom_plan limit 1;
+$$;
+revoke execute on function ma_table(personnes) from public, anon, authenticated;
+
+-- Changer une photo : la sienne, ou celle de n'importe qui si on est admin.
+-- La photo a déjà été envoyée dans le stockage, dans le dossier « <code invités>/equipe/ ».
+create or replace function changer_photo(p_code text, p_prenom text, p_chemin text)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare m personnes; inv text; n int;
+begin
+  select * into m from personnes where code = p_code;
+  if not found then return false; end if;
+  if p_prenom is not null and p_prenom <> m.prenom and not m.admin then return false; end if;
+  select valeur into inv from reglages where cle = 'code_invites';
+  if p_chemin is not null and p_chemin !~ ('^' || inv || '/equipe/[0-9a-f-]{36}\.jpg$') then return false; end if;
+  update personnes set photo = p_chemin where prenom = coalesce(p_prenom, m.prenom);
+  get diagnostics n = row_count;
+  return n > 0;
+end $$;
+revoke execute on function changer_photo(text, text, text) from public;
+grant  execute on function changer_photo(text, text, text) to anon, authenticated;

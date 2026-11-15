@@ -40,3 +40,8 @@ insert into fiches (titre, icone, contenu, pour, public, ordre) values
 
 insert into plan_table (nom, table_no) values
   ('Léa Martin', 1), ('Chloé Durand', 1), ('Paul Petit', 2), ('Hugo Petit', 2);
+
+-- Version 3 : forme des tables, places, lien d'une personne avec le plan de table
+insert into les_tables (no, nom, forme) values (1, null, 'ronde'), (2, null, 'rect') on conflict (no) do nothing;
+insert into plan_table (nom, table_no) values ('Témoin Un', 2), ('Marc Leroy', 2);
+update personnes set nom_plan = 'Témoin Un' where prenom = 'Témoin 1';

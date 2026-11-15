@@ -123,5 +123,27 @@ begin
     if jsonb_array_length(trouver_table(inv, 'petit')) <> 2 then raise exception 'ÉCHEC : la recherche par nom de famille'; end if;
   end;
 
+  -- 9. Version 3 : dessin des tables, ma table, photos
+  declare inv text; r jsonb; u text := gen_random_uuid()::text;
+  begin
+    select code into inv from codes where prenom = 'INVITES';
+    r := trouver_table(inv, 'hugo');
+    if r->0->'detail'->>'forme' <> 'rect' or jsonb_array_length(r->0->'detail'->'places') <> 4 then
+      raise exception 'ÉCHEC : le dessin de la table 2 est faux : %', r; end if;
+    if (mon_espace(c_temoin)->'ma_table'->'detail'->>'table')::int <> 2 then raise exception 'ÉCHEC : le témoin ne voit pas sa table'; end if;
+    if mon_espace(c_dj)->'ma_table' <> 'null'::jsonb then raise exception 'ÉCHEC : le DJ a une table alors qu''il n''est pas relié au plan'; end if;
+    begin perform details_table(1); raise exception 'ÉCHEC : details_table est appelable directement';
+    exception when insufficient_privilege then null; end;
+
+    if changer_photo(c_temoin, 'DJ', inv || '/equipe/' || u || '.jpg') then raise exception 'ÉCHEC : un témoin change la photo du DJ'; end if;
+    if changer_photo(c_temoin, null, 'https://pirate.example/x.jpg') then raise exception 'ÉCHEC : une photo peut venir d''un autre site'; end if;
+    if changer_photo(c_temoin, null, inv || '/' || u || '.jpg') then raise exception 'ÉCHEC : une photo hors du dossier equipe'; end if;
+    if changer_photo('faux', null, inv || '/equipe/' || u || '.jpg') then raise exception 'ÉCHEC : changer une photo sans code'; end if;
+    if not changer_photo(c_temoin, null, inv || '/equipe/' || u || '.jpg') then raise exception 'ÉCHEC : un témoin ne peut pas mettre sa photo'; end if;
+    if mon_espace(c_temoin)->'moi'->>'photo' <> inv || '/equipe/' || u || '.jpg' then raise exception 'ÉCHEC : la photo n''est pas enregistrée'; end if;
+    if not changer_photo(c_mariee, 'DJ', inv || '/equipe/' || u || '.jpg') then raise exception 'ÉCHEC : l''admin ne peut pas changer la photo du DJ'; end if;
+    if mon_espace(c_dj)::text not like '%/equipe/%' then raise exception 'ÉCHEC : le DJ ne voit pas sa photo'; end if;
+  end;
+
   raise notice '✅ Base : tous les tests de sécurité passent';
 end $$;

@@ -88,8 +88,8 @@ function vueTable() {
   if (INFOS.q.trim().length >= 2 && R) {
     res = R.length ? R.map(r => `<article class="carte table-trouvee">
         <p class="eyebrow">${esc(r.nom)}</p>
-        <p class="num-table">Table <b>${esc(r.table)}</b></p>
-        ${r.voisins && r.voisins.length ? `<p class="petit">Avec ${esc(r.voisins.join(", "))}</p>` : ""}
+        <p class="num-table">${r.detail && r.detail.nom && !/^Table \d+$/.test(r.detail.nom) ? esc(r.detail.nom) : `Table <b>${esc(r.table)}</b>`}</p>
+        ${r.detail ? dessinTable(r.detail, r.nom) : r.voisins && r.voisins.length ? `<p class="petit">Avec ${esc(r.voisins.join(", "))}</p>` : ""}
       </article>`).join("")
       : `<p class="vide">Personne à ce nom. Essaie avec ton nom de famille, ou demande aux témoins 😊</p>`;
   } else if (INFOS.q.trim().length === 1) res = `<p class="vide">Encore une lettre…</p>`;
@@ -146,5 +146,117 @@ const sansAccent = s => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLow
 function demoTable(q) {
   const P = window.DEMO.plan || [], n = sansAccent(q.trim());
   return P.filter(p => sansAccent(p.nom).includes(n)).slice(0, 8)
-    .map(p => ({ nom: p.nom, table: p.table, voisins: P.filter(v => v.table === p.table && v !== p).map(v => v.nom) }));
+    .map(p => ({ nom: p.nom, table: p.table, voisins: P.filter(v => v.table === p.table && v !== p).map(v => v.nom), detail: demoDetail(p.table) }));
 }
+function demoDetail(t) {
+  const P = (window.DEMO.plan || []).filter(p => p.table === t), F = (window.DEMO.tables || {})[t] || {};
+  return { table: t, nom: F.nom || "Table " + t, forme: F.forme || "ronde", places: P.map((p, k) => ({ place: k + 1, nom: p.nom })) };
+}
+
+// ---------- Le dessin d'une table : chaque place, la sienne en rouge, qui est en face et à côté ----------
+// Ronde : place 1 en haut, puis dans le sens des aiguilles d'une montre.
+// Rectangle (« rect » ou « honneur ») : 1re moitié en haut (1 à droite), 2e moitié en bas, face à face (1 en face de la 1re du bas).
+function voisinsDePlace(forme, n, i) {
+  if (forme === "ronde") {
+    const tour = k => ((k - 1 + n) % n) + 1;
+    return { face: n > 2 ? tour(i + Math.floor(n / 2)) : null, cotes: n > 1 ? [...new Set([tour(i - 1), tour(i + 1)])].filter(k => k !== i) : [] };
+  }
+  const moitie = Math.ceil(n / 2), haut = i <= moitie;
+  const face = haut ? (i + moitie <= n ? i + moitie : null) : i - moitie;
+  const debut = haut ? 1 : moitie + 1, fin = haut ? moitie : n;
+  return { face, cotes: [i - 1, i + 1].filter(k => k >= debut && k <= fin) };
+}
+const initiales = nom => String(nom).split(/[\s-]+/).filter(Boolean).slice(0, 2).map(m => m[0]).join("").toUpperCase();
+function dessinTable(d, moiNom) {
+  if (!d || !d.places || !d.places.length) return "";
+  const P = d.places, n = P.length, forme = d.forme || "ronde";
+  const moi = P.find(p => p.nom === moiNom);
+  const pos = [];   // coordonnées de chaque place (dans l'ordre des places)
+  let fond = "";
+  if (forme === "ronde") {
+    fond = `<circle cx="160" cy="130" r="62" class="t-table"/><text x="160" y="138" class="t-num">${esc(d.table)}</text>`;
+    P.forEach((p, k) => { const a = -Math.PI / 2 + 2 * Math.PI * k / n; pos.push([160 + 98 * Math.cos(a), 130 + 98 * Math.sin(a)]); });
+  } else {
+    const moitie = Math.ceil(n / 2), larg = Math.max(120, moitie * 46);
+    const x0 = 160 - larg / 2;
+    fond = `<rect x="${x0}" y="100" width="${larg}" height="60" rx="8" class="t-table"/><text x="160" y="138" class="t-num">${esc(d.table || "")}</text>`;
+    P.forEach((p, k) => {
+      const haut = k < moitie, j = haut ? k : k - moitie, nb = haut ? moitie : n - moitie;
+      const x = x0 + larg - (larg / nb) * (j + 0.5);          // de droite à gauche, comme sur les fiches de Chaïna
+      pos.push([x, haut ? 70 : 190]);
+    });
+  }
+  const vb = forme === "ronde" ? "0 0 320 260" : "0 30 320 200";
+  const sieges = P.map((p, k) => {
+    const [x, y] = pos[k], c = p.nom === moiNom ? "t-siege moi" : "t-siege";
+    return `<g class="${c}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="19"/><text x="${x.toFixed(1)}" y="${(y + 5).toFixed(1)}">${esc(initiales(p.nom))}</text></g>`;
+  }).join("");
+  let phrase = "";
+  if (moi) {
+    const v = voisinsDePlace(forme, n, moi.place), nomDe = k => (P.find(p => p.place === k) || {}).nom;
+    const face = v.face && nomDe(v.face), cotes = v.cotes.map(nomDe).filter(Boolean);
+    phrase = `<p class="t-phrase">${face ? `En face de toi : <b>${esc(face)}</b>` : ""}${face && cotes.length ? "<br>" : ""}${cotes.length ? `À côté de toi : <b>${esc(cotes.join(" et "))}</b>` : ""}</p>`;
+  }
+  return `<div class="t-dessin">
+      <svg viewBox="${vb}" role="img" aria-label="Dessin de la ${esc(d.nom || "table")}">${fond}${sieges}</svg>
+      ${phrase}
+      <ol class="t-liste">${P.map(p => `<li class="${p.nom === moiNom ? "moi" : ""}"><span>${esc(initiales(p.nom))}</span>${esc(p.nom)}${p.nom === moiNom ? " (toi)" : ""}</li>`).join("")}</ol>
+    </div>`;
+}
+// Carte « Ta place » en haut du programme, pour ceux qui ont un lien perso
+function carteMaTable() {
+  if (!data) return "";
+  if (data.ma_table && data.ma_table.detail) {
+    const d = data.ma_table.detail;
+    return `<details class="carte ma-table" open><summary><span>🍽️ Ta place</span><b>${esc(d.nom)}</b></summary>${dessinTable(d, data.ma_table.nom)}</details>`;
+  }
+  return "";
+}
+
+// ---------- Les photos de l'équipe ----------
+function avatar(p, taille, attr) {
+  const t = taille || 40, img = p && p.photo ? `<img src="${esc(urlMedia(p.photo))}" alt="" loading="lazy">` : `<span>${esc(initiales((p && p.prenom) || "?"))}</span>`;
+  return `<button type="button" class="avatar" style="--t:${t}px" ${attr || "disabled"} aria-label="Photo de ${esc((p && p.prenom) || "")}">${img}</button>`;
+}
+async function carreJpeg(fichier) {
+  const img = await chargerImage(fichier);
+  const w = img.width, h = img.height, c = Math.min(w, h), k = document.createElement("canvas");
+  k.width = k.height = 400;
+  k.getContext("2d").drawImage(img, (w - c) / 2, (h - c) / 2, c, c, 0, 0, 400, 400);
+  return new Promise(ok => k.toBlob(ok, "image/jpeg", .82));
+}
+let photoPour = null;   // null = moi ; sinon le prénom (admin)
+function choisirPhoto(prenom) {
+  photoPour = prenom || null;
+  let f = document.getElementById("photoFichier");
+  if (!f) {
+    f = document.createElement("input"); f.type = "file"; f.id = "photoFichier"; f.accept = "image/*"; f.hidden = true;
+    f.onchange = () => { const x = f.files[0]; f.value = ""; if (x) envoyerPhoto(x); };
+    document.body.appendChild(f);
+  }
+  f.click();
+}
+async function envoyerPhoto(fichier) {
+  const cible = photoPour;
+  try {
+    const blob = await carreJpeg(fichier);
+    alerte("Envoi de la photo…");
+    let chemin;
+    if (DEMO_MODE) chemin = URL.createObjectURL(blob);
+    else {
+      chemin = LIVE.invite + "/equipe/" + nouvelId() + ".jpg";
+      await envoyerFichier(chemin, blob);
+      if (!await rpc("changer_photo", { p_code: code, p_prenom: cible, p_chemin: chemin })) throw new Error("refusé");
+    }
+    const p = cible ? (data.equipe || []).find(x => x.prenom === cible) : data.moi;
+    if (p) p.photo = chemin;
+    if (!cible || cible === data.moi.prenom) data.moi.photo = chemin;
+    (data.equipe || []).forEach(x => { if (x.prenom === (cible || data.moi.prenom)) x.photo = chemin; });
+    if (DEMO_MODE) (window.DEMO.personnes.find(x => x.prenom === (cible || data.moi.prenom)) || {}).photo = chemin;
+    garderCopie(); dessiner(); alerte("Photo enregistrée ✅");
+  } catch (e) { alerte("La photo n'a pas pu être envoyée. Réessaie."); }
+}
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-photo]");
+  if (a) choisirPhoto(a.dataset.photo || null);
+});

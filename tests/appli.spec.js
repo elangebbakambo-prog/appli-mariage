@@ -198,3 +198,36 @@ test("Un texte piégé dans une fiche reste du texte", async ({ page }) => {
   expect(await page.evaluate(() => window.pirate)).toBeUndefined();
   await expect(page.locator(".fiche-corps img")).toHaveCount(0);
 });
+
+// ---------- Version 3 : dessin des tables, ma place, photos ----------
+test("Le résultat de « Trouve ta table » montre la table, qui est en face et à côté", async ({ page }) => {
+  await page.goto("/?invite=invites");
+  await page.fill("#champPrenom", "Léa"); await page.click("#formPrenom button");
+  await page.click("[data-onglet-invite=table]");
+  await page.fill("#champTable", "hugo");
+  await expect(page.locator(".t-siege")).toHaveCount(4);
+  await expect(page.locator(".t-siege.moi")).toHaveCount(1);
+  // Table rectangle de 4 : Paul (1), Hugo (2) en haut ; Témoin Un (3), Marc (4) en bas → Hugo est en face de Marc, à côté de Paul
+  await expect(page.locator(".t-phrase")).toContainText("En face de toi : Marc Leroy");
+  await expect(page.locator(".t-phrase")).toContainText("À côté de toi : Paul Petit");
+});
+
+test("Un témoin voit sa place en haut de son programme", async ({ page }) => {
+  await page.goto("/?code=temoin");
+  await expect(page.locator(".ma-table summary")).toContainText("Table 2");
+  await expect(page.locator(".ma-table .t-liste li.moi")).toContainText("Témoin Un");
+  await expect(page.locator(".ma-table .t-phrase")).toContainText("En face de toi : Paul Petit");
+});
+
+test("Ajouter sa photo, et l'admin peut changer celle des autres", async ({ page }) => {
+  await page.goto("/?code=temoin");
+  const photo = require("path").join(__dirname, "..", "icon-512.png");
+  const [choix] = await Promise.all([page.waitForEvent("filechooser"), page.click(".bonjour [data-photo]")]);
+  await choix.setFiles(photo);
+  await expect(page.locator(".bonjour .avatar img")).toBeVisible();
+  await page.goto("/?code=mariee");
+  await page.click("[data-onglet=equipe]");
+  const [choix2] = await Promise.all([page.waitForEvent("filechooser"), page.click('[data-photo="DJ"]')]);
+  await choix2.setFiles(photo);
+  await expect(page.locator('[data-photo="DJ"] img')).toBeVisible();
+});
