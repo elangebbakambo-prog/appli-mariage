@@ -194,21 +194,22 @@ function dessinTable(d, moiNom) {
   const P = d.places, n = P.length, forme = d.forme || "ronde";
   const moi = P.find(p => p.nom === moiNom);
   const pos = [];   // coordonnées de chaque place (dans l'ordre des places)
-  let fond = "";
+  let fond = "", W = 320;
   if (forme === "ronde") {
     fond = `<circle cx="160" cy="130" r="62" class="t-table"/><text x="160" y="138" class="t-num">${esc(d.table)}</text>`;
     P.forEach((p, k) => { const a = -Math.PI / 2 + 2 * Math.PI * k / n; pos.push([160 + 98 * Math.cos(a), 130 + 98 * Math.sin(a)]); });
   } else {
     const moitie = Math.ceil(n / 2), larg = Math.max(120, moitie * 46);
-    const x0 = 160 - larg / 2;
-    fond = `<rect x="${x0}" y="100" width="${larg}" height="60" rx="8" class="t-table"/><text x="160" y="138" class="t-num">${esc(d.table || "")}</text>`;
+    W = Math.max(320, larg + 50);
+    const x0 = W / 2 - larg / 2, centre = forme === "honneur" ? "♥" : d.table;
+    fond = `<rect x="${x0}" y="100" width="${larg}" height="60" rx="8" class="t-table"/><text x="${W / 2}" y="138" class="t-num">${esc(centre)}</text>`;
     P.forEach((p, k) => {
       const haut = k < moitie, j = haut ? k : k - moitie, nb = haut ? moitie : n - moitie;
       const x = x0 + larg - (larg / nb) * (j + 0.5);          // de droite à gauche, comme sur les fiches de Chaïna
       pos.push([x, haut ? 70 : 190]);
     });
   }
-  const vb = forme === "ronde" ? "0 0 320 260" : "0 30 320 200";
+  const vb = forme === "ronde" ? "0 0 320 260" : `0 30 ${W} 200`;
   const sieges = P.map((p, k) => {
     const [x, y] = pos[k], c = p.nom === moiNom ? "t-siege moi" : "t-siege";
     return `<g class="${c}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="19"/><text x="${x.toFixed(1)}" y="${(y + 5).toFixed(1)}">${esc(initiales(p.nom))}</text></g>`;
