@@ -1,3 +1,12 @@
+// Lien de démo : …/?demo=1&code=mariee montre l'appli avec ces données d'exemple, même quand Supabase est branché.
+// En démo, rien n'est gardé sur le téléphone (pour ne pas écraser le vrai lien de quelqu'un).
+window.DEMO_URL = new URLSearchParams(location.search).has("demo");
+window.STOCKAGE = (() => {
+  if (!window.DEMO_URL) { try { return window.localStorage; } catch (e) {} }
+  const m = {};
+  return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } };
+})();
+
 // Données de démonstration, utilisées seulement tant que Supabase n'est pas branché (config.js).
 // Liens de test : ?code=mariee (admin), ?code=temoin, ?code=dj
 window.DEMO = {

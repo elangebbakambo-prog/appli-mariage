@@ -73,10 +73,10 @@ function frise(L, montrerPour) {
 // ---------- Les infos des invités (programme public + fiches publiques) ----------
 async function chargerInfos() {
   if (!LIVE.invite) return;
-  if (!INFOS.data) { try { INFOS.data = JSON.parse(localStorage.getItem("mariage-infos") || "null"); } catch (e) {} }
+  if (!INFOS.data) { try { INFOS.data = JSON.parse(STOCKAGE.getItem("mariage-infos") || "null"); } catch (e) {} }
   try {
     const r = DEMO_MODE ? demoInfos(LIVE.invite) : await rpc("infos_invites", { p_code: LIVE.invite });
-    if (r) { INFOS.data = r; INFOS.etat = ""; try { localStorage.setItem("mariage-infos", JSON.stringify(r)); } catch (e) {} }
+    if (r) { INFOS.data = r; INFOS.etat = ""; try { STOCKAGE.setItem("mariage-infos", JSON.stringify(r)); } catch (e) {} }
   } catch (e) { INFOS.etat = INFOS.data ? "" : "erreur"; }
   dessiner();
 }

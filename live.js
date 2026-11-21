@@ -22,14 +22,14 @@ const LIVE = {
 (() => {
   const p = new URLSearchParams(location.search).get("invite");
   try {
-    if (p) localStorage.setItem("mariage-invite", p);
-    LIVE.invite = p || localStorage.getItem("mariage-invite") || "";
+    if (p) STOCKAGE.setItem("mariage-invite", p);
+    LIVE.invite = p || STOCKAGE.getItem("mariage-invite") || "";
   } catch (e) { LIVE.invite = p || ""; }
 })();
 
 function prenomLive() {
   if (data && data.moi) return data.moi.prenom;
-  try { return localStorage.getItem("mariage-prenom") || ""; } catch (e) { return ""; }
+  try { return STOCKAGE.getItem("mariage-prenom") || ""; } catch (e) { return ""; }
 }
 const urlMedia = chemin => DEMO_MODE || /^(blob|data):/.test(chemin) ? chemin : CFG.supabaseUrl + "/storage/v1/object/public/live/" + chemin;
 const nouvelId = () => (crypto.randomUUID ? crypto.randomUUID()
@@ -586,7 +586,7 @@ document.addEventListener("click", e => {
   const v = e.target.closest("[data-post]");
   if (v) return ouvrirStory(v.dataset.post);
   if (e.target.closest("[data-changer-prenom]")) {
-    try { localStorage.removeItem("mariage-prenom"); } catch (err) {}
+    try { STOCKAGE.removeItem("mariage-prenom"); } catch (err) {}
     dessiner();
   }
 });
@@ -595,6 +595,6 @@ document.addEventListener("submit", e => {
   e.preventDefault();
   const v = document.getElementById("champPrenom").value.trim().slice(0, 30);
   if (!v) return;
-  try { localStorage.setItem("mariage-prenom", v); } catch (err) {}
+  try { STOCKAGE.setItem("mariage-prenom", v); } catch (err) {}
   dessiner();
 });

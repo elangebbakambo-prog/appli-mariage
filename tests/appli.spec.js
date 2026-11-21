@@ -239,3 +239,23 @@ test("Ajouter sa photo, et l'admin peut changer celle des autres", async ({ page
   await choix2.setFiles(photo);
   await expect(page.locator('[data-photo="DJ"] img')).toBeVisible();
 });
+
+// ---------- Lien de démo pour montrer l'appli sans donner de vrai code ----------
+test.describe(() => {
+  test("…/?demo=1 montre les données d'exemple même avec Supabase branché, sans toucher au vrai lien gardé", async ({ page }) => {
+    await page.route("**/config.js", r => r.fulfill({ contentType: "text/javascript",
+      body: `window.MARIAGE = { maries: "A & B", date: "2030-06-01", supabaseUrl: "https://test.supabase.co", supabaseKey: "x" };` }));
+    let appels = 0;
+    await page.route("https://test.supabase.co/**", r => { appels++; r.abort(); });
+    await page.goto("/");
+    await page.evaluate(() => localStorage.setItem("mariage-code", "VRAICODE"));
+    await page.goto("/?demo=1&code=mariee");
+    await expect(page.getByText("Mode démo")).toBeVisible();
+    await expect(page.locator(".bonjour")).toContainText("La mariée");
+    await page.reload();
+    await expect(page).toHaveURL(/demo=1/);
+    await expect(page.locator(".bonjour")).toContainText("La mariée");
+    expect(await page.evaluate(() => localStorage.getItem("mariage-code"))).toBe("VRAICODE");
+    expect(appels).toBe(0);
+  });
+});

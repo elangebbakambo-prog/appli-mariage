@@ -80,6 +80,10 @@ En local : `npm install` puis `npm test`.
 4. Project Settings → API Keys : copie l'URL du projet et la clé **publishable** dans `config.js`.
 5. Les liens de chacun : onglet **Équipe** avec un lien admin, ou `select prenom, role, code from personnes;`
 
+## Lien de démo
+
+`…/appli-mariage/?demo=1&code=mariee` montre l’appli avec les données d’exemple de `demo.js`, même quand Supabase est branché : pratique pour la montrer sans donner de vrai lien. Rien n’est gardé sur le téléphone en démo. Autres rôles : `code=temoin`, `code=dj`, ou `?demo=1&invite=invites` pour la vue invité.
+
 ## Tester en local
 
 Ouvre le dossier dans VS Code, puis clic droit sur `index.html` → « Open with Live Server ». Sans Supabase, le mode démo marche avec `?code=mariee` (admin), `?code=temoin` ou `?code=dj`.

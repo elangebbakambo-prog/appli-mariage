@@ -3,7 +3,8 @@
 // ou de demo.js tant que Supabase n'est pas branché.
 
 const CFG = window.MARIAGE || {};
-const DEMO_MODE = !CFG.supabaseUrl;
+const DEMO_MODE = !CFG.supabaseUrl || !!window.DEMO_URL;
+const avecDemo = q => (window.DEMO_URL ? q + "&demo=1" : q);   // garder ?demo=1 dans l'adresse
 const app = document.getElementById("app");
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const hhmm = t => (t ? String(t).slice(0, 5).replace(":", "h") : "");
@@ -13,12 +14,12 @@ const maps = q => "https://www.google.com/maps/search/?api=1&query=" + encodeURI
 const params = new URLSearchParams(location.search);
 let code = params.get("code") || "";
 try {
-  if (code) localStorage.setItem("mariage-code", code);
-  else code = localStorage.getItem("mariage-code") || "";
+  if (code) STOCKAGE.setItem("mariage-code", code);
+  else code = STOCKAGE.getItem("mariage-code") || "";
 } catch (e) {}
-if (code && !params.get("code")) history.replaceState(null, "", "?code=" + encodeURIComponent(code));
+if (code && !params.get("code")) history.replaceState(null, "", avecDemo("?code=" + encodeURIComponent(code)));
 // Invité (QR code) : le code invités reste aussi dans l'adresse, pour l'icône de l'écran d'accueil
-if (!code && LIVE.invite && !params.get("invite")) history.replaceState(null, "", "?invite=" + encodeURIComponent(LIVE.invite));
+if (!code && LIVE.invite && !params.get("invite")) history.replaceState(null, "", avecDemo("?invite=" + encodeURIComponent(LIVE.invite)));
 // Un invité n'a pas de lien perso : il ne voit que le live
 const modeInvite = () => !code && !!LIVE.invite;
 
@@ -48,7 +49,7 @@ function demoEspace(c) {
   const m = D.personnes.find(p => p.code === c);
   if (!m) return null;
   let coches = {};
-  try { coches = JSON.parse(localStorage.getItem("mariage-demo-coches") || "{}"); } catch (e) {}
+  try { coches = JSON.parse(STOCKAGE.getItem("mariage-demo-coches") || "{}"); } catch (e) {}
   const mien = t => m.admin || (t.prenom ? t.prenom === m.prenom : t.role ? t.role.toLowerCase() === m.role.toLowerCase()
     : (t.pour || []).length > 0 && concerne(t.pour, m.role, m.prenom, m.groupes));
   return {
@@ -64,8 +65,8 @@ function demoEspace(c) {
 
 // Dernières données reçues, gardées sur le téléphone : l'appli marche même sans réseau
 const CLE_COPIE = () => "mariage-copie-" + code;
-function lireCopie() { try { return JSON.parse(localStorage.getItem(CLE_COPIE()) || "null"); } catch (e) { return null; } }
-function garderCopie() { try { localStorage.setItem(CLE_COPIE(), JSON.stringify(data)); } catch (e) {} }
+function lireCopie() { try { return JSON.parse(STOCKAGE.getItem(CLE_COPIE()) || "null"); } catch (e) { return null; } }
+function garderCopie() { try { STOCKAGE.setItem(CLE_COPIE(), JSON.stringify(data)); } catch (e) {} }
 let horsLigne = false;
 
 async function charger() {
@@ -93,9 +94,9 @@ async function cocher(id, fait) {
   garderCopie();
   if (DEMO_MODE) {
     let c = {};
-    try { c = JSON.parse(localStorage.getItem("mariage-demo-coches") || "{}"); } catch (e) {}
+    try { c = JSON.parse(STOCKAGE.getItem("mariage-demo-coches") || "{}"); } catch (e) {}
     c[id] = { fait, fait_par: t.fait_par, fait_le: t.fait_le };
-    try { localStorage.setItem("mariage-demo-coches", JSON.stringify(c)); } catch (e) {}
+    try { STOCKAGE.setItem("mariage-demo-coches", JSON.stringify(c)); } catch (e) {}
     return;
   }
   try {
@@ -139,7 +140,7 @@ function ecranCode() {
       <input id="champCode" placeholder="Ou colle ton code ici" autocomplete="off" autocapitalize="off" required>
       <button class="btn plein" type="submit">Entrer</button>
     </form>
-    ${DEMO_MODE ? `<p class="petit">Démo : essaie <a href="?code=mariee">la mariée</a>, <a href="?code=temoin">un témoin</a> ou <a href="?code=dj">le DJ</a>.</p>` : ""}
+    ${DEMO_MODE ? `<p class="petit">Démo : essaie <a href="${avecDemo("?code=mariee")}">la mariée</a>, <a href="${avecDemo("?code=temoin")}">un témoin</a> ou <a href="${avecDemo("?code=dj")}">le DJ</a>.</p>` : ""}
   </section>`;
 }
 
@@ -210,7 +211,7 @@ let invite = null;   // Android : la proposition d'installation de Chrome
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); invite = e; dessiner(); });
 function bandeauInstall() {
   let ferme = false;
-  try { ferme = localStorage.getItem("mariage-install-ferme") === "1"; } catch (e) {}
+  try { ferme = STOCKAGE.getItem("mariage-install-ferme") === "1"; } catch (e) {}
   if (installee() || ferme) return "";
   const comment = invite ? `<button class="btn plein" type="button" data-installer>Installer</button>`
     : iphone ? `<small>Touche <b>Partager</b> <span aria-hidden="true">⎙</span> en bas de Safari, puis <b>Sur l'écran d'accueil</b>.</small>`
@@ -264,7 +265,7 @@ app.addEventListener("click", async e => {
   if (o) { onglet = o.dataset.onglet; dessiner(); window.scrollTo({ top: 0 }); if (onglet === "live") chargerLive(); return; }
   if (e.target.closest("[data-installer]") && invite) { invite.prompt(); invite = null; return; }
   if (e.target.closest("[data-fermer-install]")) {
-    try { localStorage.setItem("mariage-install-ferme", "1"); } catch (err) {}
+    try { STOCKAGE.setItem("mariage-install-ferme", "1"); } catch (err) {}
     dessiner(); return;
   }
   const c = e.target.closest("[data-copier]");
@@ -283,8 +284,8 @@ app.addEventListener("submit", e => {
   const v = document.getElementById("champCode").value.trim();
   const m = v.match(/code=([^&\s]+)/);   // on accepte aussi le lien entier
   code = m ? decodeURIComponent(m[1]) : v;
-  try { localStorage.setItem("mariage-code", code); } catch (err) {}
-  history.replaceState(null, "", "?code=" + encodeURIComponent(code));
+  try { STOCKAGE.setItem("mariage-code", code); } catch (err) {}
+  history.replaceState(null, "", avecDemo("?code=" + encodeURIComponent(code)));
   charger();
 });
 
