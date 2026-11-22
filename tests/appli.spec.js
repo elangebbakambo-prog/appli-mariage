@@ -259,3 +259,30 @@ test.describe(() => {
     expect(appels).toBe(0);
   });
 });
+
+// ---------- Le Wizz ----------
+test("Envoyer un wizz à un groupe, puis recevoir un wizz qui fait trembler l'écran et y répondre", async ({ page }) => {
+  await page.goto("/?code=mariee");
+  await page.click("[data-wizz-ouvrir]");
+  await page.click('[data-wizz-pour="Team"]');
+  await page.click('[data-wizz-msg="Besoin de toi ici 🙏"]');
+  await expect(page.locator(".toast").first()).toContainText("Wizz envoyé à 3 personnes");
+  expect(await page.evaluate(() => window.DEMO.wizz.map(w => w.pour).sort())).toEqual(["Elange", "Témoin 1", "Témoin 2"]);
+  // Un wizz arrive pour la mariée
+  await page.evaluate(() => window.DEMO.wizz.push({ pour: "La mariée", de: "Témoin 1", message: "Tu es où ?" }));
+  await page.evaluate(() => verifierWizz());
+  await expect(page.locator("#wizz")).toBeVisible();
+  await expect(page.locator("#wizz .wz-texte")).toHaveText("Tu es où ?");
+  await expect(page.locator("#wizz.tremble")).toHaveCount(1);
+  await page.click('#wizz [data-wizz-rep="J\'arrive 🏃"]');
+  await expect(page.locator("#wizz")).toBeHidden();
+  await page.evaluate(() => verifierWizz());
+  await expect(page.locator("#wizz")).toBeHidden();       // déjà répondu : il ne revient pas
+});
+
+test("Un wizz sans destinataire ne part pas", async ({ page }) => {
+  await page.goto("/?code=temoin");
+  await page.click("[data-wizz-ouvrir]");
+  await page.click('[data-wizz-msg="Tu es où ?"]');
+  await expect(page.locator(".toast").first()).toContainText("Choisis d'abord");
+});

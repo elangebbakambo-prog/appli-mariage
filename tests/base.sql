@@ -145,5 +145,30 @@ begin
     if mon_espace(c_dj)::text not like '%/equipe/%' then raise exception 'ÉCHEC : le DJ ne voit pas sa photo'; end if;
   end;
 
+  -- 10. Le Wizz
+  declare inv text; r jsonb; n int; wid bigint;
+  begin
+    select code into inv from codes where prenom = 'INVITES';
+    if mon_espace(c_temoin)::text like '%' || c_dj || '%' then raise exception 'ÉCHEC : l''annuaire montre des codes'; end if;
+    begin perform 1 from wizz; raise exception 'ÉCHEC : anon peut lire les wizz';
+    exception when insufficient_privilege then null; end;
+    begin perform envoyer_wizz(inv, '{DJ}', 'coucou'); raise exception 'ÉCHEC : le code invités peut envoyer un wizz';
+    exception when raise_exception then if sqlerrm like 'ÉCHEC%' then raise; end if; end;
+    n := envoyer_wizz(c_mariee, '{DJ}', 'Besoin de toi ici');
+    if n <> 1 then raise exception 'ÉCHEC : le wizz au DJ devrait toucher 1 personne (%)', n; end if;
+    n := envoyer_wizz(c_mariee, '{Team}', 'Photo de groupe !');
+    if n <> 3 then raise exception 'ÉCHEC : le wizz à la Team devrait toucher 3 personnes, sans soi-même (%)', n; end if;
+    if envoyer_wizz(c_mariee, '{}', 'x') <> 0 then raise exception 'ÉCHEC : un wizz sans destinataire part à tout le monde'; end if;
+    r := mes_wizz(c_dj);
+    if jsonb_array_length(r->'recus') <> 1 or r->'recus'->0->>'de' <> 'La mariée' then raise exception 'ÉCHEC : le DJ ne reçoit pas son wizz : %', r; end if;
+    if jsonb_array_length(mes_wizz(c_temoin)->'recus') <> 1 then raise exception 'ÉCHEC : le témoin devrait avoir 1 wizz (Team)'; end if;
+    wid := (r->'recus'->0->>'id')::bigint;
+    if repondre_wizz(c_temoin, wid, 'pirate') then raise exception 'ÉCHEC : un témoin répond au wizz du DJ'; end if;
+    if not repondre_wizz(c_dj, wid, 'J''arrive 🏃') then raise exception 'ÉCHEC : le DJ ne peut pas répondre'; end if;
+    if jsonb_array_length(mes_wizz(c_dj)->'recus') <> 0 then raise exception 'ÉCHEC : le wizz reste affiché après réponse'; end if;
+    if mes_wizz(c_mariee)->'reponses'->0->>'qui' <> 'DJ' then raise exception 'ÉCHEC : la mariée ne voit pas la réponse du DJ'; end if;
+    if mes_wizz('faux') is not null then raise exception 'ÉCHEC : mes_wizz sans lien'; end if;
+  end;
+
   raise notice '✅ Base : tous les tests de sécurité passent';
 end $$;

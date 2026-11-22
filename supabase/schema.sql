@@ -113,6 +113,9 @@ begin
   return jsonb_build_object(
     'moi', jsonb_build_object('prenom', m.prenom, 'role', m.role, 'admin', m.admin, 'photo', m.photo),
     'ma_table', ma_table(m),
+    -- L'annuaire de l'équipe (sans les liens) : pour choisir à qui envoyer un wizz
+    'annuaire', (select coalesce(jsonb_agg(jsonb_build_object('prenom', prenom, 'role', role, 'photo', photo, 'groupes', groupes)
+                                           order by prenom), '[]'::jsonb) from personnes where id <> m.id),
     'invite', (select valeur from reglages where cle = 'code_invites'),
 
     'moments', coalesce((
@@ -389,3 +392,73 @@ begin
 end $$;
 revoke execute on function changer_photo(text, text, text) from public;
 grant  execute on function changer_photo(text, text, text) to anon, authenticated;
+
+-- ===============================================================
+-- 6. Le Wizz : biper quelqu'un de l'équipe (« Besoin de toi ici ! »)
+-- ===============================================================
+-- Un wizz = une ligne par destinataire. Il s'affiche (écran qui tremble) quand l'appli est ouverte.
+
+create table if not exists wizz (
+  id       bigint generated always as identity primary key,
+  de       text not null,
+  de_id    uuid references personnes(id) on delete cascade,
+  pour_id  uuid not null references personnes(id) on delete cascade,
+  message  text not null check (char_length(message) between 1 and 140),
+  cree_le  timestamptz not null default now(),
+  vu_le    timestamptz,
+  reponse  text check (char_length(reponse) <= 40)
+);
+create index if not exists wizz_pour on wizz (pour_id, vu_le);
+alter table wizz enable row level security;
+revoke all on wizz from anon, authenticated;
+
+-- Envoyer un wizz à des prénoms, des rôles ou des groupes (« Team », « Filles »…). Renvoie le nombre de personnes bipées.
+create or replace function envoyer_wizz(p_code text, p_pour text[], p_message text)
+returns int language plpgsql security definer set search_path = public as $$
+declare m personnes; n int; msg text := left(trim(coalesce(p_message, '')), 140);
+begin
+  select * into m from personnes where code = p_code;
+  if not found then raise exception 'lien inconnu'; end if;
+  if msg = '' or cardinality(coalesce(p_pour, '{}')) = 0 then return 0; end if;
+  -- Anti-spam : 40 wizz maximum en 2 minutes par personne
+  if (select count(*) from wizz where de_id = m.id and cree_le > now() - interval '2 minutes') >= 40 then
+    raise exception 'trop de wizz, attends un peu';
+  end if;
+  insert into wizz (de, de_id, pour_id, message)
+    select m.prenom, m.id, p.id, msg from personnes p
+    where p.id <> m.id and concerne(p_pour, p.role, p.prenom, p.groupes);
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+-- Mes wizz pas encore vus, et les réponses à mes wizz (des 3 dernières heures)
+create or replace function mes_wizz(p_code text)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare m personnes;
+begin
+  select * into m from personnes where code = p_code;
+  if not found then return null; end if;
+  return jsonb_build_object(
+    'recus', coalesce((select jsonb_agg(jsonb_build_object('id', w.id, 'de', w.de, 'photo', d.photo, 'message', w.message, 'cree_le', w.cree_le) order by w.cree_le)
+                       from wizz w left join personnes d on d.id = w.de_id
+                       where w.pour_id = m.id and w.vu_le is null and w.cree_le > now() - interval '3 hours'), '[]'::jsonb),
+    'reponses', coalesce((select jsonb_agg(jsonb_build_object('id', w.id, 'qui', p.prenom, 'reponse', w.reponse, 'message', w.message) order by w.vu_le)
+                          from wizz w join personnes p on p.id = w.pour_id
+                          where w.de_id = m.id and w.reponse is not null and w.vu_le > now() - interval '3 hours'), '[]'::jsonb));
+end $$;
+
+-- Répondre à un wizz reçu (« J'arrive », « Pas dispo », « Vu »)
+create or replace function repondre_wizz(p_code text, p_id bigint, p_reponse text)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare m personnes; n int;
+begin
+  select * into m from personnes where code = p_code;
+  if not found then return false; end if;
+  update wizz set vu_le = coalesce(vu_le, now()), reponse = nullif(left(trim(coalesce(p_reponse, '')), 40), '')
+   where id = p_id and pour_id = m.id;
+  get diagnostics n = row_count;
+  return n > 0;
+end $$;
+
+revoke execute on function envoyer_wizz(text, text[], text), mes_wizz(text), repondre_wizz(text, bigint, text) from public;
+grant  execute on function envoyer_wizz(text, text[], text), mes_wizz(text), repondre_wizz(text, bigint, text) to anon, authenticated;

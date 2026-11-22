@@ -59,6 +59,7 @@ function demoEspace(c) {
     taches: D.taches.filter(mien).map(t => Object.assign({ pour: t.prenom || t.role, fait: false }, t, coches[t.id] || {})),
     fiches: (D.fiches || []).filter(f => m.admin || f.public || (f.pour.length && concerne(f.pour, m.role, m.prenom))),
     equipe: m.admin ? D.personnes : null,
+    annuaire: D.personnes.filter(p => p !== m).map(p => ({ prenom: p.prenom, role: p.role, photo: p.photo || null, groupes: p.groupes || [] })),
     invite: "invites"
   };
 }
@@ -79,6 +80,7 @@ async function charger() {
     erreur = data ? "" : "inconnu";
     if (data) garderCopie();
     if (data && data.invite) LIVE.invite = data.invite;
+    if (data) verifierWizz();
   } catch (e) {
     horsLigne = !!data;
     erreur = data ? "" : "reseau";   // si on avait déjà des données, on les garde
@@ -244,7 +246,7 @@ function dessiner() {
     ${horsLigne ? `<p class="horsligne">Pas de réseau : tu vois la dernière version enregistrée.</p>` : ""}
     ${bandeauInstall()}
     <section class="bonjour">${avatar(data.moi, 46, 'data-photo=""')}<div>Salut <b>${esc(data.moi.prenom)}</b> <span class="pastille ${data.moi.admin ? "or" : ""}">${esc(data.moi.role)}</span>
-      ${data.moi.photo ? "" : `<button type="button" class="lien" data-photo="">📷 Ajoute ta photo</button>`}</div></section>
+      ${data.moi.photo ? "" : `<button type="button" class="lien" data-photo="">📷 Ajoute ta photo</button>`}</div>${boutonWizz()}</section>
     ${carteRecherche()}
     <nav class="onglets ${onglets.length > 4 ? "serres" : ""}" role="tablist">${onglets.map(([id, nom, n]) =>
       `<button type="button" role="tab" class="onglet" data-onglet="${id}" aria-selected="${id === onglet}">${nom}${n ? ` <span class="nb">${n}</span>` : ""}</button>`).join("")}

@@ -92,13 +92,14 @@ function carteRecherche() {
       </div>
     </form>`;
 }
-function popupTable(html) {
+function popupTable(html, titre) {
   let ov = document.getElementById("popupTable");
   if (!ov) {
     ov = document.createElement("div"); ov.id = "popupTable"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-modal", "true"); ov.setAttribute("aria-label", "Ta table");
     ov.addEventListener("click", e => { if (e.target === ov || e.target.closest("[data-fermer-popup]")) fermerPopupTable(); });
     document.body.appendChild(ov);
   }
+  ov.setAttribute("aria-label", titre || "Ta table");
   ov.innerHTML = `<div class="popup-boite">
       <button type="button" class="popup-x" data-fermer-popup aria-label="Fermer">✕</button>
       ${html}
@@ -239,7 +240,9 @@ function carteMaTable() {
 // ---------- Les photos de l'équipe ----------
 function avatar(p, taille, attr) {
   const t = taille || 40, img = p && p.photo ? `<img src="${esc(urlMedia(p.photo))}" alt="" loading="lazy">` : `<span>${esc(initiales((p && p.prenom) || "?"))}</span>`;
-  return `<button type="button" class="avatar" style="--t:${t}px" ${attr || "disabled"} aria-label="Photo de ${esc((p && p.prenom) || "")}">${img}</button>`;
+  // Avec une action (changer la photo) : un bouton ; sinon une simple image (on peut alors la mettre dans un autre bouton)
+  return attr ? `<button type="button" class="avatar" style="--t:${t}px" ${attr} aria-label="Photo de ${esc((p && p.prenom) || "")}">${img}</button>`
+    : `<span class="avatar" style="--t:${t}px" aria-hidden="true">${img}</span>`;
 }
 async function carreJpeg(fichier) {
   const img = await chargerImage(fichier);

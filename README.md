@@ -15,6 +15,7 @@ Récupération des souvenirs et montages : à venir.
 - **Trouve ta table** : case tout en haut de l’accueil, pour les invités comme pour l’équipe. On tape son prénom ou son nom (sans se soucier des accents), le résultat s’ouvre dans une pop-up avec le dessin de la table.
 - **Places à table** : « Trouve ta table » (et la carte « Ta place » en haut du Programme) dessine la table, ronde ou en rectangle (`les_tables.forme`), avec la place de chacun (`plan_table.place`), qui est en face et à côté. Une personne avec un lien perso voit sa place si `personnes.nom_plan` = son nom dans le plan.
 - **Photos de l'équipe** : chacun ajoute la sienne (touche le rond à côté de « Salut »), les admins peuvent changer celle des autres dans Équipe. Les photos vont dans le stockage `live`, jamais sur GitHub.
+- **Wizz** (`wizz.js`) : bouton ⚡ Wizz sur l'accueil pour biper une personne ou un groupe (Team, Filles…) avec un message rapide. Chez elle, l'écran tremble, le téléphone vibre et sonne ; elle répond « J'arrive », « Pas dispo » ou « Vu », et l'envoyeur voit la réponse. Fonctionne quand l'appli est ouverte (vérification toutes les 8 s) ; les notifications téléphone verrouillé viendront ensuite.
 - **Groupes** : une personne peut être dans des groupes (`groupes`, ex. `{Team,Filles}`). Un moment, une tâche ou une fiche avec `pour = {Filles}` est vu par tout le groupe.
 
 ## Les vraies données (privées)
