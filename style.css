@@ -520,3 +520,28 @@ body.menu-ouvert { overflow: hidden; }
 .flash { animation: flash 1.4s ease-out; }
 @keyframes flash { 0%, 40% { box-shadow: 0 0 0 3px var(--or-vif); } 100% { box-shadow: 0 0 0 0 transparent; } }
 @media (prefers-reduced-motion: reduce) { .tiroir, .voile { transition: none; } .flash { animation: none; } }
+
+/* ---------- Check-list des photos de groupe ---------- */
+.lien-photos { width: 100%; display: flex; align-items: center; gap: 12px; margin-bottom: 14px; text-align: left; font: inherit; color: inherit; cursor: pointer; border: 1px solid var(--or-vif); }
+.lien-photos > span:first-child { font-size: 1.6rem; }
+.lien-photos > span:nth-child(2) { flex: 1; }
+.lien-photos small { color: var(--doux); }
+.lien-photos i { font-style: normal; font-size: 1.6rem; color: var(--rouge-vif); }
+.ph-tete h2 { margin: 0 0 4px; font: 600 1.6rem var(--titre); color: var(--sapin); }
+.ph-barre { height: 12px; margin: 12px 0 8px; border-radius: 99px; background: var(--trait); overflow: hidden; }
+.ph-barre i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--sapin2), #3FBF6E); transition: width .4s; }
+.phs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.ph label { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 16px; background: var(--carte); border: 1px solid var(--trait); cursor: pointer; box-shadow: 0 4px 14px rgba(18,53,39,.08); }
+.ph input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.ph-no { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 700;
+  border: 2px solid var(--or-vif); color: var(--sapin); background: var(--fond); }
+.ph input:focus-visible + .ph-no { outline: 3px solid var(--or-vif); outline-offset: 2px; }
+.ph-txt { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.ph-txt b { font-size: 1.05rem; }
+.ph-gens { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+.ph-gens span { padding: 3px 9px; border-radius: 99px; background: #EEF4F0; color: var(--sapin); font-size: .85rem; }
+.ph.faite label { opacity: .65; background: #F3F7F4; }
+.ph.faite .ph-no { background: #2F9E5B; border-color: #2F9E5B; color: #fff; }
+.ph.faite .ph-txt b { text-decoration: line-through; }
+.ph-tete .resume { color: var(--doux); } .ph-tete .resume b { color: var(--sapin); }
+.ph.faite label { opacity: 1; background: #E7F1EA; } .ph.faite .ph-txt { opacity: .75; }

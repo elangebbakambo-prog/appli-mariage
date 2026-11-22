@@ -28,8 +28,9 @@ function entrees() {
     return E;
   }
   if (!data) return E;
-  const reste = (data.taches || []).filter(t => !t.fait).length;
-  it("📅", "Programme", "o:programme"); it("📸", "Le live", "o:live"); it("✅", data.moi.admin ? "Tâches" : "Mes tâches", "o:taches", reste ? String(reste) : "");
+  const reste = (data.taches || []).filter(t => !t.fait && t.section !== SECTION_PHOTOS).length;
+  it("📅", "Programme", "o:programme"); it("🎥", "Le live", "o:live"); it("✅", data.moi.admin ? "Tâches" : "Mes tâches", "o:taches", reste ? String(reste) : "");
+  if (photosGroupe().length) it("📸", "Photos de groupe", "o:photos", compteurPhotos());
   it("🍽️", "Trouve ta table", "table");
   if (data.annuaire && data.annuaire.length) it("⚡", "Envoyer un wizz", "wizz");
   if (data.moi.admin) it("📣", "Annonce ou Moment", "annonce");

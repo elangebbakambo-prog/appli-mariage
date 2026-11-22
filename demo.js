@@ -32,7 +32,9 @@ window.DEMO = {
     { id: 3, titre: "Tester le son et le micro", details: "", heure: "15:30", role: "DJ" },
     { id: 4, titre: "Dresser le buffet du vin d'honneur", details: "", heure: "15:30", role: "Traiteur" },
     { id: 5, titre: "Préparer le discours des témoins", details: "", heure: null, prenom: "Témoin 1" },
-    { id: 6, titre: "Installer les sapins de la salle", details: "", heure: null, section: "Vendredi · Salle principale", pour: ["Team"] }
+    { id: 6, titre: "Installer les sapins de la salle", details: "", heure: null, section: "Vendredi · Salle principale", pour: ["Team"] },
+    { id: 7, titre: "Les mariés avec les témoins", details: "Les mariés, Témoin 1 et Témoin 2.", heure: "14:00", section: "Photos de groupe", pour: ["Team"] },
+    { id: 8, titre: "Famille proche", details: "Les parents, les grands-parents et les cousins.", heure: null, section: "Photos de groupe", pour: ["Team"] }
   ],
   fiches: [
     { id: 1, titre: "Fiche DJ", icone: "🎧", pour: ["DJ"], public: false,

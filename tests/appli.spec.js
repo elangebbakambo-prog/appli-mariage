@@ -459,3 +459,20 @@ test("Le menu : un témoin n'a pas les entrées d'admin, un invité a le sien", 
   await page.click('#tiroir [data-aller="o:programme"]');
   await expect(page.locator('[data-onglet-invite="programme"]')).toHaveAttribute("aria-selected", "true");
 });
+
+test("Check-list des photos de groupe : on coche, ça passe dans « Déjà faites »", async ({ page }) => {
+  await page.goto("/?code=temoin");
+  await page.click("#menuBtn");
+  await expect(page.locator('#tiroir [data-aller="o:photos"]')).toContainText("0/2");
+  await page.click('#tiroir [data-aller="o:photos"]');
+  await expect(page.locator(".ph")).toHaveCount(2);
+  await expect(page.locator(".ph").first().locator(".ph-gens span")).toHaveText(["Les mariés", "Témoin 1", "Témoin 2"]);
+  await page.locator(".ph label").first().click();
+  await expect(page.locator(".ph.faite")).toHaveCount(1);
+  await expect(page.locator(".ph.faite")).toContainText("Témoin 1");   // faite par…
+  await expect(page.locator(".ph-tete .resume")).toContainText("1 faite sur 2");
+  // et depuis l'onglet Tâches, la carte mène à la check-list
+  await page.click("[data-onglet=taches]");
+  await page.click(".lien-photos");
+  await expect(page.locator(".ph-tete")).toBeVisible();
+});

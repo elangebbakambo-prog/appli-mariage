@@ -164,8 +164,8 @@ function ligneTache(t) {
 }
 
 function vueTaches() {
-  const T = data.taches;
-  if (!T.length) return `<p class="vide">Rien à faire pour toi pour l'instant. Profite ! 🥂</p>`;
+  const T = data.taches.filter(t => t.section !== SECTION_PHOTOS);   // les photos de groupe ont leur check-list
+  if (!T.length) return lienChecklistPhotos() + `<p class="vide">Rien à faire pour toi pour l'instant. Profite ! 🥂</p>`;
   const reste = T.filter(t => !t.fait).length;
   // Par section (« Vendredi · Salle principale »…), dans l'ordre d'arrivée ; sinon « Avant le jour J » / « Le jour J »
   const groupes = new Map();
@@ -175,7 +175,7 @@ function vueTaches() {
     groupes.get(g).push(t);
   }
   const parHeure = L => L.slice().sort((a, b) => (a.heure ? 1 : 0) - (b.heure ? 1 : 0) || String(a.heure || "").localeCompare(String(b.heure || "")));
-  return `<p class="resume">${reste ? `<b>${reste}</b> à faire sur ${T.length}` : "Tout est fait 🎉"}</p>
+  return `${lienChecklistPhotos()}<p class="resume">${reste ? `<b>${reste}</b> à faire sur ${T.length}` : "Tout est fait 🎉"}</p>
     ${[...groupes].map(([g, L]) => {
       const faites = L.filter(t => t.fait).length;
       return `<h3 class="sous">${esc(g)} <small>${faites}/${L.length}</small></h3><ul class="taches">${parHeure(L).map(ligneTache).join("")}</ul>`;
@@ -236,13 +236,13 @@ function dessiner() {
     return;
   }
   if (!data) { app.innerHTML = ecranCode(); return; }
-  const reste = data.taches.filter(t => !t.fait).length;
+  const reste = data.taches.filter(t => !t.fait && t.section !== SECTION_PHOTOS).length;
   const onglets = [["programme", "Programme"], ["taches", data.moi.admin ? "Tâches" : "Mes tâches", reste]];
   if (data.invite) onglets.splice(1, 0, ["live", "Live"]);
   if (data.fiches && data.fiches.length) onglets.push(["fiches", "Fiches"]);
   if (data.moi.admin && data.equipe) onglets.push(["equipe", "Équipe"]);
-  if (!onglets.some(o => o[0] === onglet)) onglet = "programme";
-  const vue = onglet === "taches" ? vueTaches() : onglet === "equipe" ? carteQr() + carteEcran() + vueEquipe()
+  if (!onglets.some(o => o[0] === onglet) && !(onglet === "photos" && photosGroupe().length)) onglet = "programme";
+  const vue = onglet === "photos" ? vuePhotos() : onglet === "taches" ? vueTaches() : onglet === "equipe" ? carteQr() + carteEcran() + vueEquipe()
     : onglet === "live" ? carteSouvenirs() + vueLive(false) : onglet === "fiches" ? vueLivreAdmin() + vueFiches(data.fiches) + carteLivreOr() : vueProgramme();
   app.innerHTML = `${entete()}
     ${horsLigne ? `<p class="horsligne">Pas de réseau : tu vois la dernière version enregistrée.</p>` : ""}
