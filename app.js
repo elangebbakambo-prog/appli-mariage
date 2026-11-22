@@ -199,6 +199,7 @@ function vueEquipe() {
       ${sesTaches.length ? `<div class="barre" title="${faites} sur ${sesTaches.length}"><i style="width:${Math.round(100 * faites / sesTaches.length)}%"></i></div>
         <small>${faites} / ${sesTaches.length} tâches faites</small>` : `<small>Aucune tâche</small>`}
       <div class="actions">
+        <button class="btn" type="button" data-qr-lien="${esc(lien)}" data-qr-nom="${esc(p.prenom)}">QR code</button>
         <button class="btn" type="button" data-copier="${esc(lien)}">Copier le lien</button>
         <a class="btn" href="https://wa.me/${tel}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">WhatsApp</a>
       </div>

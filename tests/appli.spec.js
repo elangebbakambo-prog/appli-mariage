@@ -320,3 +320,11 @@ test("Wizz avec un endroit : il s'affiche en gros chez la personne", async ({ pa
   await expect(page.locator("#wizz .wz-texte")).toHaveText("Viens vite !");
   await expect(page.locator("#wizz .wz-ou")).toHaveText("📍 Vestiaire");
 });
+
+test("Équipe : afficher le QR code du lien perso de quelqu'un", async ({ page }) => {
+  await page.goto("/?code=mariee");
+  await page.click("[data-onglet=equipe]");
+  await page.click('[data-qr-nom="DJ"]');
+  await expect(page.locator(".qr-perso h2")).toHaveText("DJ");
+  await expect(page.locator(".qr-perso img")).toBeVisible();
+});

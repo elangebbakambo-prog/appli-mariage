@@ -286,3 +286,18 @@ document.addEventListener("click", e => {
   const a = e.target.closest("[data-photo]");
   if (a) choisirPhoto(a.dataset.photo || null);
 });
+
+// ---------- QR code du lien perso de quelqu'un (onglet Équipe) : il le scanne avec son appareil photo ----------
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-qr-lien]");
+  if (!b) return;
+  let img = "";
+  try { const q = qrcode(0, "M"); q.addData(b.dataset.qrLien); q.make(); img = q.createDataURL(10, 2); } catch (err) {}
+  popupTable(`<div class="qr-perso">
+      <p class="eyebrow">Le lien de</p>
+      <h2>${esc(b.dataset.qrNom)}</h2>
+      ${img ? `<img src="${img}" alt="QR code du lien de ${esc(b.dataset.qrNom)}">` : ""}
+      <p>Ouvre l'appareil photo et vise le code, puis touche le lien qui apparaît.</p>
+      <p class="petit">⚠ Ce lien est personnel : ne le montre qu'à ${esc(b.dataset.qrNom)}.</p>
+    </div>`, "QR code de " + b.dataset.qrNom);
+});

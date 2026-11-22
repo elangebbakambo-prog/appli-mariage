@@ -455,3 +455,6 @@ button.avatar { cursor: pointer; }
 .wz-lieux { max-height: 150px; overflow-y: auto; }
 .wz-lieu.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .wz-ou { margin: 6px auto 2px; display: inline-block; padding: 8px 16px; border-radius: 999px; background: var(--accent); color: #fff; font: 700 1.15rem var(--corps); }
+.qr-perso { text-align: center; }
+.qr-perso h2 { margin: 2px 0 10px !important; }
+.qr-perso img { width: min(280px, 80vw); height: auto; image-rendering: pixelated; border-radius: 10px; }
