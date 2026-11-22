@@ -227,6 +227,7 @@ function bandeauInstall() {
 }
 
 function dessiner() {
+  majBoutonMenu();
   if (cam && cam.el && !cam.el.hidden) return;   // ne pas redessiner sous la caméra
   const actif = document.activeElement;            // ni pendant qu'on tape
   if (actif && ["champTable", "champPrenom", "champCode"].includes(actif.id)) return;

@@ -489,3 +489,34 @@ button.avatar { cursor: pointer; }
 .souvenirs small { color: var(--doux); }
 .ecran-carte { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .ecran-carte h3 { margin: 0; font: 600 1.4rem var(--titre); color: var(--rouge-vif, var(--accent)); }
+
+/* ---------- Le menu qui glisse (bouton ☰ + tiroir à gauche) ---------- */
+.menu-btn { position: fixed; z-index: 40; left: max(10px, env(safe-area-inset-left)); top: max(30px, calc(env(safe-area-inset-top) + 22px));
+  width: 44px; height: 44px; border: 1px solid rgba(217,178,95,.55); border-radius: 14px; background: var(--sapin); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 6px 18px rgba(18,53,39,.3); }
+.menu-btn span { display: block; width: 18px; height: 2px; border-radius: 2px; background: var(--or-vif); }
+.voile { position: fixed; inset: 0; z-index: 90; background: rgba(10,25,18,.6); opacity: 0; pointer-events: none; transition: opacity .25s; }
+.tiroir { position: fixed; top: 0; bottom: 0; left: 0; z-index: 100; width: min(82vw, 320px); overflow-y: auto; overscroll-behavior: contain;
+  transform: translateX(-102%); transition: transform .28s cubic-bezier(.2,.8,.2,1);
+  padding: max(18px, env(safe-area-inset-top)) 12px max(24px, env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, var(--sapin) 0%, #0D281D 100%); color: #F4F1E8; box-shadow: 10px 0 40px rgba(0,0,0,.35);
+  border-right: 1px solid rgba(217,178,95,.35); }
+body.menu-ouvert .tiroir { transform: none; }
+body.menu-ouvert .voile { opacity: 1; pointer-events: auto; }
+body.menu-ouvert { overflow: hidden; }
+.tr-tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 6px 6px 14px; margin-bottom: 6px; border-bottom: 1px solid rgba(217,178,95,.3); }
+.tr-tete .eyebrow { margin: 0; color: var(--or-vif); }
+.tr-titre { font: 600 1.6rem/1.1 var(--titre); }
+.tr-x { width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255,255,255,.1); color: #fff; font-size: 1rem; cursor: pointer; }
+.tr-sep { margin: 16px 8px 4px; font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--or-vif); }
+.tr-liste { list-style: none; margin: 0; padding: 0; }
+.tr-liste button { width: 100%; display: flex; align-items: center; gap: 12px; padding: 11px 10px; border: 0; border-radius: 12px;
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.tr-liste button:hover, .tr-liste button:focus-visible { background: rgba(255,255,255,.08); outline: none; }
+.tr-liste button[aria-current="page"] { background: rgba(217,178,95,.18); box-shadow: inset 3px 0 0 var(--or-vif); }
+.tr-liste i { font-style: normal; width: 26px; text-align: center; font-size: 1.15rem; }
+.tr-liste span { flex: 1; }
+.tr-liste b { min-width: 22px; padding: 1px 7px; border-radius: 99px; background: var(--rouge-vif); color: #fff; font-size: .78rem; text-align: center; }
+.flash { animation: flash 1.4s ease-out; }
+@keyframes flash { 0%, 40% { box-shadow: 0 0 0 3px var(--or-vif); } 100% { box-shadow: 0 0 0 0 transparent; } }
+@media (prefers-reduced-motion: reduce) { .tiroir, .voile { transition: none; } .flash { animation: none; } }

@@ -24,7 +24,7 @@ function rendreFiche(texte) {
 }
 function vueFiches(fiches, vide) {
   if (!fiches || !fiches.length) return `<p class="vide">${vide || "Rien pour l'instant."}</p>`;
-  return `<div class="fiches">${fiches.map((f, i) => `<details class="fiche" ${fiches.length === 1 || i === 0 ? "open" : ""}>
+  return `<div class="fiches">${fiches.map((f, i) => `<details class="fiche" data-fiche="${esc(f.id)}" ${fiches.length === 1 || i === 0 ? "open" : ""}>
       <summary>${f.icone ? `<span class="ico-fiche" aria-hidden="true">${esc(f.icone)}</span>` : ""}${esc(f.titre)}</summary>
       <div class="fiche-corps">${rendreFiche(f.contenu)}</div>
     </details>`).join("")}</div>`;

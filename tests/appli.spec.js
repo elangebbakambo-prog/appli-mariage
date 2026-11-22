@@ -417,3 +417,45 @@ test("Fiches : les liens https marchent, les liens piégés non", async ({ page 
   await expect(page.locator('.fiche-corps a[href^="javascript"]')).toHaveCount(0);
   await expect(page.locator(".fiche-corps a[onmouseover]")).toHaveCount(0);
 });
+
+// ---------- Le menu qui glisse ----------
+test("Le menu ☰ mène direct au livre d'or et aux fiches", async ({ page }) => {
+  await page.goto("/?code=mariee");
+  await expect(page.locator(".moment")).toHaveCount(6);
+  await page.click("#menuBtn");
+  await expect(page.locator("#tiroir")).toHaveAttribute("aria-hidden", "false");
+  await expect(page.locator('#tiroir [aria-current="page"]')).toContainText("Programme");
+  await page.click('#tiroir [data-aller="livre"]');
+  await expect(page.locator("#tiroir")).toHaveAttribute("aria-hidden", "true");
+  await expect(page.locator('[data-onglet="fiches"]')).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#champLivre")).toBeFocused();
+  // une fiche fermée s'ouvre toute seule
+  await page.click("#menuBtn");
+  await page.click('#tiroir [data-aller="f:2"]');
+  await expect(page.locator('[data-fiche="2"]')).toHaveAttribute("open", "");
+  // l'admin a aussi Équipe ; Échap ferme
+  await page.click("#menuBtn");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#tiroir")).toHaveAttribute("aria-hidden", "true");
+  await page.click("#menuBtn");
+  await page.click('#tiroir [data-aller="o:equipe"]');
+  await expect(page.locator(".perso")).toHaveCount(6);
+});
+
+test("Le menu : un témoin n'a pas les entrées d'admin, un invité a le sien", async ({ page }) => {
+  await page.goto("/?code=temoin");
+  await page.click("#menuBtn");
+  await expect(page.locator('#tiroir [data-aller="o:equipe"]')).toHaveCount(0);
+  await expect(page.locator('#tiroir [data-aller="annonce"]')).toHaveCount(0);
+  await page.click('#tiroir [data-aller="wizz"]');
+  await expect(page.locator("#popupTable")).toContainText("À qui ?");
+
+  await page.evaluate(() => localStorage.clear());          // un autre téléphone : celui d'un invité
+  await page.goto("/?invite=invites");
+  await expect(page.locator("#menuBtn")).toBeHidden();   // pas avant d'avoir donné son prénom
+  await page.fill("#champPrenom", "Léa");
+  await page.click("#formPrenom button");
+  await page.click("#menuBtn");
+  await page.click('#tiroir [data-aller="o:programme"]');
+  await expect(page.locator('[data-onglet-invite="programme"]')).toHaveAttribute("aria-selected", "true");
+});
