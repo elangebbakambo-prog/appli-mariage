@@ -372,3 +372,35 @@ test("Livre d'or : un invité écrit, la mariée lit", async ({ page }) => {
   await expect(page.locator("#livreAdmin .mot")).toContainText("Tous nos vœux ❤️");
   await expect(page.locator("#livreAdmin .mot cite")).toHaveText("Léa");
 });
+
+// ---------- Écran géant et souvenirs ----------
+test("L'écran géant fait défiler les photos du live, avec le QR code et le bandeau du Moment", async ({ page }) => {
+  const img = require("fs").readFileSync(require("path").join(__dirname, "..", "icon-192.png"));
+  await page.route("**/config.js", r => r.fulfill({ contentType: "text/javascript",
+    body: `window.MARIAGE = { maries: "Chaïna & Chris", date: "2030-06-01", supabaseUrl: "https://test.supabase.co", supabaseKey: "x" };` }));
+  const now = new Date().toISOString(), fin = new Date(Date.now() + 90000).toISOString();
+  await page.route("https://test.supabase.co/**", r => {
+    const u = r.request().url();
+    if (u.includes("/storage/")) return r.fulfill({ contentType: "image/png", body: img });
+    if (u.includes("live_fil")) return r.fulfill({ contentType: "application/json", body: JSON.stringify({ maintenant: now, posts: [
+      { id: "a", auteur: "Léa", type: "photo", fichier: "x/a.jpg", miniature: "x/a-m.jpg", cree_le: now, moment: "Entrée des mariés" }] }) });
+    if (u.includes("infos_invites")) return r.fulfill({ contentType: "application/json", body: JSON.stringify({ maintenant: now, annonces: [{ id: 1, type: "moment", texte: "Entrée des mariés", fin }] }) });
+    r.fulfill({ contentType: "application/json", body: "null" });
+  });
+  await page.goto("/ecran.html?invite=ABC");
+  await expect(page.locator(".qr img")).toBeVisible();
+  await expect(page.locator("#legende")).toContainText("Léa");
+  await expect(page.locator("#bandeau")).toContainText("MOMENT : Entrée des mariés");
+  await expect(page.locator("#scene .media.visible")).toHaveCount(1);
+});
+
+test("Les admins ont « Tout télécharger » et le lien de l'écran géant ; pas les témoins", async ({ page }) => {
+  await page.goto("/?code=mariee");
+  await page.click("[data-onglet=live]");
+  await expect(page.locator("[data-souvenirs]")).toBeVisible();
+  await page.click("[data-onglet=equipe]");
+  await expect(page.locator("a", { hasText: "Ouvrir l'écran géant" })).toHaveAttribute("href", /ecran\.html\?invite=invites$/);
+  await page.goto("/?code=temoin");
+  await page.click("[data-onglet=live]");
+  await expect(page.locator("[data-souvenirs]")).toHaveCount(0);
+});

@@ -43,8 +43,9 @@ test("Aucun script chargé depuis un autre site", () => {
   }
 });
 
-test("La page a sa politique de sécurité (CSP)", () => {
-  const t = lire(path.join(ROOT, "index.html"));
+test("Les pages ont leur politique de sécurité (CSP)", () => {
+  for (const page of ["index.html", "ecran.html"]) {
+  const t = lire(path.join(ROOT, page));
   const csp = (t.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/) || [])[1] || "";
   expect(csp, "index.html doit avoir une Content-Security-Policy").not.toBe("");
   expect(csp).toMatch(/script-src 'self'(;|$)/);
@@ -52,15 +53,16 @@ test("La page a sa politique de sécurité (CSP)", () => {
   expect(csp).toMatch(/object-src 'none'/);
   const url = (lire(path.join(ROOT, "config.js")).match(/supabaseUrl:\s*"([^"]*)"/) || [])[1] || "";
   if (url) expect(url, "l'adresse Supabase doit être autorisée dans connect-src").toMatch(/^https:\/\/[a-z0-9]+\.supabase\.co$/);
+  }
 });
 
 test("Tout ce qui vient de la base passe par esc() avant d'être affiché", () => {
-  for (const fichier of ["app.js", "live.js", "infos.js", "wizz.js", "annonces.js"]) {
+  for (const fichier of ["app.js", "live.js", "infos.js", "wizz.js", "annonces.js", "souvenirs.js", "ecran.js"]) {
   const t = lire(path.join(ROOT, fichier));
   // Les champs écrits par les gens (prénoms, titres, lieux…) ne doivent jamais être insérés tels quels
   const champs = ["prenom", "role", "titre", "lieu", "details", "fait_par", "pour", "auteur", "texte", "fichier", "miniature", "de", "message", "qui", "reponse", "moment"];
   for (const [, expr] of t.matchAll(/\$\{([^}]+)\}/g)) {
-    const brut = champs.some(c => new RegExp(`\\.${c}\\b`).test(expr)) && !/\besc\(|encodeURIComponent\(|hhmm\(|maps\(|\.length|join\(""\)|\?/.test(expr);
+    const brut = champs.some(c => new RegExp(`\\.${c}\\b`).test(expr)) && !/\besc\(|encodeURIComponent\(|propre\(|hhmm\(|maps\(|\.length|join\(""\)|\?/.test(expr);
     expect(brut, `${fichier} affiche \${${expr}} sans esc()`).toBe(false);
   }
   }

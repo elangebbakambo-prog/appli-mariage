@@ -19,6 +19,8 @@ Récupération des souvenirs et montages : à venir.
 - **Annonces et Moments** (`annonces.js`, admins seulement) : bouton 📣 → message à tout le monde (équipe + invités qui ont activé les notifications), affiché aussi en bandeau dans l'appli. « Moment » : 2 min pour que tout le monde poste ; les photos postées pendant ce temps sont marquées ⚡.
 - **Rappels automatiques** : 10 min avant chaque moment (programme) ou tâche à heure fixe, la personne concernée reçoit une notification. Lancés chaque minute par `pg_cron` (fonction `envoyer_rappels`), une seule fois chacun.
 - **Livre d'or** : chacun laisse un mot (onglet Infos des invités, Fiches de l'équipe) ; seuls les admins le lisent.
+- **Écran géant** (`ecran.html?invite=CODE`, lien dans l'onglet Équipe des admins) : sur la télé ou le vidéoprojecteur, les photos et vidéos du live défilent en direct (les nouvelles d'abord), avec un QR code pour poster et le bandeau du Moment en cours. L'écran ne se met pas en veille.
+- **Souvenirs** (`souvenirs.js`, admins) : « Tout télécharger » en haut du Live → un .zip de toutes les photos et vidéos, rangées par heure avec le prénom (plusieurs .zip au-delà de 300 Mo).
 - **Groupes** : une personne peut être dans des groupes (`groupes`, ex. `{Team,Filles}`). Un moment, une tâche ou une fiche avec `pour = {Filles}` est vu par tout le groupe.
 
 ## Les vraies données (privées)

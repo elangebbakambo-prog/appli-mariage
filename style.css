@@ -484,3 +484,8 @@ button.avatar { cursor: pointer; }
 .mot p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .mot cite { display: block; margin-top: 6px; font-style: normal; font-weight: 600; color: var(--accent); }
 .fiches + .carte, .fiche + .fiches { margin-top: 14px; }
+.souvenirs { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.souvenirs p { margin: 0; flex: 1; min-width: 200px; }
+.souvenirs small { color: var(--doux); }
+.ecran-carte { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.ecran-carte h3 { margin: 0; font: 600 1.4rem var(--titre); color: var(--rouge-vif, var(--accent)); }

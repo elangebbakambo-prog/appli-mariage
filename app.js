@@ -241,8 +241,8 @@ function dessiner() {
   if (data.fiches && data.fiches.length) onglets.push(["fiches", "Fiches"]);
   if (data.moi.admin && data.equipe) onglets.push(["equipe", "Équipe"]);
   if (!onglets.some(o => o[0] === onglet)) onglet = "programme";
-  const vue = onglet === "taches" ? vueTaches() : onglet === "equipe" ? carteQr() + vueEquipe()
-    : onglet === "live" ? vueLive(false) : onglet === "fiches" ? vueLivreAdmin() + vueFiches(data.fiches) + carteLivreOr() : vueProgramme();
+  const vue = onglet === "taches" ? vueTaches() : onglet === "equipe" ? carteQr() + carteEcran() + vueEquipe()
+    : onglet === "live" ? carteSouvenirs() + vueLive(false) : onglet === "fiches" ? vueLivreAdmin() + vueFiches(data.fiches) + carteLivreOr() : vueProgramme();
   app.innerHTML = `${entete()}
     ${horsLigne ? `<p class="horsligne">Pas de réseau : tu vois la dernière version enregistrée.</p>` : ""}
     ${bandeauInstall()}
