@@ -5,9 +5,11 @@
 const INFOS = { data: null, etat: "", q: "", resultats: null, timer: 0 };
 
 // ---------- Les fiches : texte simple → HTML (toujours échappé d'abord) ----------
-// « ## Titre » = sous-titre, « - texte » = puce, **gras**, ligne vide = espace.
+// « ## Titre » = sous-titre, « - texte » = puce, **gras**, [texte](https://…) = lien, ligne vide = espace.
 function rendreFiche(texte) {
-  const gras = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  // Le texte est d'abord échappé ; un lien n'est accepté qu'en https:// (pas de javascript:, pas de guillemets possibles)
+  const gras = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+    .replace(/\[([^\]]+)\]\((https:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
   let html = "", liste = false;
   const fermer = () => { if (liste) { html += "</ul>"; liste = false; } };
   for (const brut of String(texte || "").split("\n")) {

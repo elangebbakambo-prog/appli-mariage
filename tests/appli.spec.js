@@ -404,3 +404,16 @@ test("Les admins ont « Tout télécharger » et le lien de l'écran géant ; pa
   await page.click("[data-onglet=live]");
   await expect(page.locator("[data-souvenirs]")).toHaveCount(0);
 });
+
+test("Fiches : les liens https marchent, les liens piégés non", async ({ page }) => {
+  await page.route("**/demo.js", async r => {
+    const body = (await (await r.fetch()).text()).replace("Sans alcool", `[Itinéraire](https://maps.google.com/?q=Bazas) [piège](javascript:alert(1)) [x](https://a.b/\\" onmouseover=\\"window.pirate=1)`);   // \\" : guillemet échappé dans demo.js
+    r.fulfill({ contentType: "text/javascript", body });
+  });
+  await page.goto("/?invite=invites");
+  await page.fill("#champPrenom", "Léa"); await page.click("#formPrenom button");
+  await page.click("[data-onglet-invite=infos]");
+  await expect(page.locator(".fiche-corps a", { hasText: "Itinéraire" })).toHaveAttribute("href", "https://maps.google.com/?q=Bazas");
+  await expect(page.locator('.fiche-corps a[href^="javascript"]')).toHaveCount(0);
+  await expect(page.locator(".fiche-corps a[onmouseover]")).toHaveCount(0);
+});
