@@ -84,6 +84,7 @@ function vueLive(invite) {
     ${L.length ? `<div class="grille">${L.map(p => `<button type="button" class="vignette" data-post="${esc(p.id)}" aria-label="${p.type === "video" ? "Vidéo" : "Photo"} de ${esc(p.auteur)}">
         <img src="${esc(urlMedia(p.miniature))}" alt="" loading="lazy" decoding="async">
         ${p.type === "video" ? `<span class="lecture" aria-hidden="true">▶</span>` : ""}
+        ${p.moment ? `<span class="badge-moment" title="${esc(p.moment)}">⚡</span>` : ""}
         <span class="qui">${esc(p.auteur)}</span></button>`).join("")}</div>`
       : `<p class="vide">Personne n'a encore posté. Lance-toi ! 🥂</p>`}
     <button class="poster" type="button" data-poster>📸 Poster</button>`;
@@ -250,7 +251,7 @@ function dessinerStory(dir) {
   const admin = data && data.moi && data.moi.admin && !DEMO_MODE;
   ov.innerHTML = `<div class="st-cadre">
     <div class="st-barre"><i id="stBarre"></i></div>
-    <div class="st-tete"><div><b>${esc(p.auteur)}</b> <span>${esc(heure)} · ${story.i + 1} / ${story.list.length}</span></div>
+    <div class="st-tete"><div><b>${esc(p.auteur)}</b> <span>${esc(heure)} · ${story.i + 1} / ${story.list.length}</span>${p.moment ? `<span class="st-moment">⚡ ${esc(p.moment)}</span>` : ""}</div>
       <div class="st-btns">
         ${admin ? `<button type="button" class="st-btn" id="stMasquer" aria-label="Masquer ce post">🚫</button>` : ""}
         ${p.type === "video" ? `<button type="button" class="st-btn" id="stSon" aria-label="Son">${storyMuet ? "🔇" : "🔊"}</button>` : ""}

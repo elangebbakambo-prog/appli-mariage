@@ -55,10 +55,10 @@ test("La page a sa politique de sécurité (CSP)", () => {
 });
 
 test("Tout ce qui vient de la base passe par esc() avant d'être affiché", () => {
-  for (const fichier of ["app.js", "live.js", "infos.js", "wizz.js"]) {
+  for (const fichier of ["app.js", "live.js", "infos.js", "wizz.js", "annonces.js"]) {
   const t = lire(path.join(ROOT, fichier));
   // Les champs écrits par les gens (prénoms, titres, lieux…) ne doivent jamais être insérés tels quels
-  const champs = ["prenom", "role", "titre", "lieu", "details", "fait_par", "pour", "auteur", "texte", "fichier", "miniature", "de", "message", "qui", "reponse"];
+  const champs = ["prenom", "role", "titre", "lieu", "details", "fait_par", "pour", "auteur", "texte", "fichier", "miniature", "de", "message", "qui", "reponse", "moment"];
   for (const [, expr] of t.matchAll(/\$\{([^}]+)\}/g)) {
     const brut = champs.some(c => new RegExp(`\\.${c}\\b`).test(expr)) && !/\besc\(|encodeURIComponent\(|hhmm\(|maps\(|\.length|join\(""\)|\?/.test(expr);
     expect(brut, `${fichier} affiche \${${expr}} sans esc()`).toBe(false);

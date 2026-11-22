@@ -62,4 +62,4 @@ jobs:
       - name: Installer la base et les exemples
         run: psql -v ON_ERROR_STOP=1 -f supabase/schema.sql -f supabase/exemple.sql
       - name: Vérifier la sécurité de la base
-        run: psql -v ON_ERROR_STOP=1 -f tests/base.sql
+        run: psql -v ON_ERROR_STOP=1 -f tests/base.sql -f tests/rappels.sql

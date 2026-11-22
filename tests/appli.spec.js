@@ -173,7 +173,7 @@ test("Le programme des invités ne montre que les moments publics", async ({ pag
   await page.click("[data-onglet-invite=programme]");
   await expect(page.locator(".moment")).toHaveCount(5);
   await expect(page.getByText("Installation de la salle")).toHaveCount(0);
-  await page.click("[data-onglet-invite=menu]");
+  await page.click("[data-onglet-invite=infos]");
   await expect(page.locator(".fiche summary")).toHaveText(/Le bar/);
   await expect(page.getByText("Fiche DJ")).toHaveCount(0);
 });
@@ -196,7 +196,7 @@ test("Un texte piégé dans une fiche reste du texte", async ({ page }) => {
   });
   await page.goto("/?invite=invites");
   await page.fill("#champPrenom", "Léa"); await page.click("#formPrenom button");
-  await page.click("[data-onglet-invite=menu]");
+  await page.click("[data-onglet-invite=infos]");
   await expect(page.locator(".fiche-corps")).toContainText("<img src=x");
   expect(await page.evaluate(() => window.pirate)).toBeUndefined();
   await expect(page.locator(".fiche-corps img")).toHaveCount(0);
@@ -327,4 +327,48 @@ test("Équipe : afficher le QR code du lien perso de quelqu'un", async ({ page }
   await page.click('[data-qr-nom="DJ"]');
   await expect(page.locator(".qr-perso h2")).toHaveText("DJ");
   await expect(page.locator(".qr-perso img")).toBeVisible();
+});
+
+// ---------- Annonces, Moment, livre d'or ----------
+test("La mariée envoie une annonce et lance un Moment ; l'invité les voit", async ({ page }) => {
+  page.on("dialog", d => d.accept());
+  await page.goto("/?code=mariee");
+  await page.click("[data-annonce-ouvrir]");
+  await page.click('[data-annonce="📸 Photo de groupe dehors dans 5 min !"]');
+  await expect(page.locator(".annonce-barre")).toContainText("Photo de groupe dehors");
+  await page.click("[data-annonce-ouvrir]");
+  await page.click('[data-moment="Entrée des mariés"]');
+  await expect(page.locator(".moment-barre")).toContainText("MOMENT : Entrée des mariés");
+  await expect(page.locator("#momentReste")).toHaveText(/^[12]:\d\d$/);
+  // Côté invité (même téléphone, même démo)
+  const annonces = await page.evaluate(() => window.DEMO.annonces);
+  await page.goto("/?demo=1&invite=invites");
+  await page.evaluate(A => { window.DEMO.annonces = A; STOCKAGE.setItem("mariage-prenom", "Léa"); }, annonces);
+  await page.evaluate(() => chargerInfos());
+  await expect(page.locator(".moment-barre")).toContainText("Entrée des mariés");
+  await expect(page.locator(".annonce-barre")).toContainText("Photo de groupe");
+  await page.click("[data-annonce-fermer]");
+  await expect(page.locator(".annonce-barre")).toHaveCount(0);
+});
+
+test("Un témoin n'a pas le bouton d'annonce", async ({ page }) => {
+  await page.goto("/?code=temoin");
+  await expect(page.locator("[data-wizz-ouvrir]")).toBeVisible();
+  await expect(page.locator("[data-annonce-ouvrir]")).toHaveCount(0);
+});
+
+test("Livre d'or : un invité écrit, la mariée lit", async ({ page }) => {
+  await page.goto("/?invite=invites");
+  await page.fill("#champPrenom", "Léa"); await page.click("#formPrenom button");
+  await page.click("[data-onglet-invite=infos]");
+  await page.fill("#champLivre", "Tous nos vœux ❤️");
+  await page.click("#formLivre button");
+  await expect(page.locator(".toast").first()).toContainText("Merci");
+  const livre = await page.evaluate(() => window.DEMO.livre);
+  await page.goto("/?code=mariee");
+  await page.evaluate(L => { window.DEMO.livre = L; }, livre);
+  await page.click("[data-onglet=fiches]");
+  await page.click("#livreAdmin summary");
+  await expect(page.locator("#livreAdmin .mot")).toContainText("Tous nos vœux ❤️");
+  await expect(page.locator("#livreAdmin .mot cite")).toHaveText("Léa");
 });

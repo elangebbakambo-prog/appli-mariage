@@ -188,5 +188,36 @@ begin
     if not push_retirer(c_dj, 'https://push.example/a') then raise exception 'ÉCHEC : le DJ ne peut pas se désabonner'; end if;
   end;
 
+  -- 12. Annonces, Moment, livre d'or, notifications des invités, rappels
+  declare inv text; r jsonb; n int; uu text := gen_random_uuid()::text;
+  begin
+    select code into inv from codes where prenom = 'INVITES';
+    begin perform envoyer_annonce(c_temoin, 'annonce', 'Pirate'); raise exception 'ÉCHEC : un témoin envoie une annonce';
+    exception when raise_exception then if sqlerrm like 'ÉCHEC%' then raise; end if; end;
+    begin perform envoyer_annonce(inv, 'annonce', 'Pirate'); raise exception 'ÉCHEC : le code invités envoie une annonce';
+    exception when raise_exception then if sqlerrm like 'ÉCHEC%' then raise; end if; end;
+    perform envoyer_annonce(c_mariee, 'annonce', 'Photo de groupe dehors');
+    perform envoyer_annonce(c_mariee, 'moment', 'Entrée des mariés');
+    r := infos_invites(inv);
+    if jsonb_array_length(r->'annonces') <> 2 or r->'annonces'->0->>'type' <> 'moment' then raise exception 'ÉCHEC : les invités ne voient pas les annonces : %', r->'annonces'; end if;
+    if jsonb_array_length(mon_espace(c_dj)->'annonces') <> 2 then raise exception 'ÉCHEC : l''équipe ne voit pas les annonces'; end if;
+    perform live_poster(inv, 'Léa', 'photo', inv || '/' || uu || '.jpg', inv || '/' || uu || '-m.jpg');
+    if not (live_fil(inv)::text like '%"moment": "Entrée des mariés"%') then raise exception 'ÉCHEC : la photo postée pendant le Moment n''est pas marquée'; end if;
+
+    if push_invite_enregistrer('faux', '{"endpoint":"https://push.example/i","keys":{"p256dh":"x","auth":"y"}}', 'Léa') then raise exception 'ÉCHEC : abonnement invité sans code'; end if;
+    if not push_invite_enregistrer(inv, '{"endpoint":"https://push.example/i","keys":{"p256dh":"x","auth":"y"}}', 'Léa') then raise exception 'ÉCHEC : un invité ne peut pas s''abonner'; end if;
+    begin perform 1 from push_invites; raise exception 'ÉCHEC : anon lit les abonnés invités';
+    exception when insufficient_privilege then null; end;
+
+    if livre_or_ecrire('faux', 'Léa', 'Bravo') then raise exception 'ÉCHEC : livre d''or sans code'; end if;
+    if not livre_or_ecrire(inv, 'Léa', 'Tous nos vœux ❤️') then raise exception 'ÉCHEC : un invité ne peut pas écrire dans le livre d''or'; end if;
+    if livre_or_lire(c_temoin) is not null or livre_or_lire(inv) is not null then raise exception 'ÉCHEC : le livre d''or est lisible par un non-admin'; end if;
+    if livre_or_lire(c_mariee)->0->>'texte' <> 'Tous nos vœux ❤️' then raise exception 'ÉCHEC : la mariée ne lit pas le livre d''or'; end if;
+    begin perform 1 from livre_or; raise exception 'ÉCHEC : anon lit le livre d''or';
+    exception when insufficient_privilege then null; end;
+    begin perform envoyer_rappels(); raise exception 'ÉCHEC : anon lance les rappels';
+    exception when insufficient_privilege then null; end;
+  end;
+
   raise notice '✅ Base : tous les tests de sécurité passent';
 end $$;

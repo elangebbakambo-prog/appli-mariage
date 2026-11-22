@@ -113,6 +113,8 @@ begin
   return jsonb_build_object(
     'moi', jsonb_build_object('prenom', m.prenom, 'role', m.role, 'admin', m.admin, 'photo', m.photo),
     'ma_table', ma_table(m),
+    'annonces', annonces_recentes(),
+    'maintenant', now(),
     -- L'annuaire de l'équipe (sans les liens) : pour choisir à qui envoyer un wizz
     'annuaire', (select coalesce(jsonb_agg(jsonb_build_object('prenom', prenom, 'role', role, 'photo', photo, 'groupes', groupes)
                                            order by prenom), '[]'::jsonb) from personnes where id <> m.id),
@@ -544,3 +546,230 @@ revoke execute on function wizz_notifier() from public, anon, authenticated;
 
 drop trigger if exists wizz_notif on wizz;
 create trigger wizz_notif after insert on wizz for each row execute function wizz_notifier();
+
+-- ===============================================================
+-- 8. Annonces, « Moment ! », rappels automatiques, notifications des invités, livre d'or
+-- ===============================================================
+
+insert into reglages (cle, valeur) values ('jour_j', '2026-12-19') on conflict (cle) do nothing;
+
+-- Envoyer une notification à une liste de téléphones (par paquets de 150). Ne plante jamais.
+create or replace function notifier(p_subs jsonb, p_titre text, p_corps text, p_tag text, p_urgent boolean default true)
+returns void language plpgsql security definer set search_path = public as $$
+declare cfg push_cfg; n int; i int := 0;
+begin
+  select * into cfg from push_cfg where id = 1;
+  if not found or p_subs is null then return; end if;
+  n := jsonb_array_length(p_subs);
+  while i < n loop
+    perform net.http_post(
+      url := cfg.url,
+      body := jsonb_build_object(
+        'vapid', jsonb_build_object('pub', cfg.pub, 'priv', cfg.priv, 'subject', cfg.subject),
+        'subs', (select jsonb_agg(x) from (select x from jsonb_array_elements(p_subs) with ordinality t(x, k) where k > i and k <= i + 150) s),
+        'urgency', case when p_urgent then 'high' else 'normal' end,
+        'payload', jsonb_build_object('title', p_titre, 'body', coalesce(p_corps, ''), 'tag', p_tag, 'url', cfg.subject)),
+      headers := '{"Content-Type": "application/json"}'::jsonb,
+      timeout_milliseconds := 10000);
+    i := i + 150;
+  end loop;
+exception when others then
+  return;
+end $$;
+revoke execute on function notifier(jsonb, text, text, text, boolean) from public, anon, authenticated;
+
+-- Le wizz passe maintenant par notifier()
+create or replace function wizz_notifier()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  perform notifier((select jsonb_agg(sub) from push_abonnes where personne_id = new.pour_id),
+                   '⚡ WIZZ de ' || new.de, new.message, 'wizz-' || new.id, true);
+  return new;
+exception when others then
+  return new;
+end $$;
+revoke execute on function wizz_notifier() from public, anon, authenticated;
+
+create or replace function est_admin(p_code text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from personnes where code = p_code and admin);
+$$;
+revoke execute on function est_admin(text) from public, anon, authenticated;
+
+-- Téléphones des invités (QR code) qui acceptent les notifications des annonces
+create table if not exists push_invites (
+  endpoint text primary key,
+  prenom   text,
+  sub      jsonb not null,
+  maj      timestamptz not null default now()
+);
+-- Annonces (« Photo de groupe dehors dans 5 min ») et Moments (« 2 min pour poster ! »)
+create table if not exists annonces (
+  id      bigint generated always as identity primary key,
+  type    text not null check (type in ('annonce', 'moment')),
+  texte   text not null check (char_length(texte) between 1 and 140),
+  de      text,
+  cree_le timestamptz not null default now(),
+  fin     timestamptz                       -- fin du Moment (2 min)
+);
+alter table posts add column if not exists moment text;  -- le Moment pendant lequel la photo a été postée
+-- Livre d'or : les mots des invités, que seuls les mariés (admins) lisent
+create table if not exists livre_or (
+  id      bigint generated always as identity primary key,
+  auteur  text not null check (char_length(auteur) between 1 and 30),
+  texte   text not null check (char_length(texte) between 1 and 1000),
+  cree_le timestamptz not null default now()
+);
+create table if not exists rappels_envoyes (cle text primary key, envoye_le timestamptz not null default now());
+
+alter table push_invites    enable row level security;
+alter table annonces        enable row level security;
+alter table livre_or        enable row level security;
+alter table rappels_envoyes enable row level security;
+revoke all on push_invites, annonces, livre_or, rappels_envoyes from anon, authenticated;
+
+create or replace function push_invite_enregistrer(p_invite text, p_sub jsonb, p_prenom text)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare ep text := p_sub->>'endpoint';
+begin
+  if not code_invites_ok(p_invite) then return false; end if;
+  if ep is null or ep !~ '^https://' or char_length(ep) > 1000 or char_length(p_sub::text) > 4000
+     or coalesce(p_sub->'keys'->>'p256dh', '') = '' or coalesce(p_sub->'keys'->>'auth', '') = '' then return false; end if;
+  insert into push_invites (endpoint, prenom, sub) values (ep, left(trim(coalesce(p_prenom, '')), 30), p_sub)
+    on conflict (endpoint) do update set prenom = excluded.prenom, sub = excluded.sub, maj = now();
+  return true;
+end $$;
+
+-- Les annonces récentes (6 h), pour les bandeaux dans l'appli
+create or replace function annonces_recentes()
+returns jsonb language sql stable security definer set search_path = public as $$
+  select coalesce(jsonb_agg(jsonb_build_object('id', id, 'type', type, 'texte', texte, 'de', de, 'cree_le', cree_le, 'fin', fin) order by id desc), '[]'::jsonb)
+  from (select * from annonces where cree_le > now() - interval '6 hours' order by id desc limit 5) a;
+$$;
+revoke execute on function annonces_recentes() from public, anon, authenticated;
+
+-- Envoyer une annonce ou lancer un Moment : seulement les admins. Tout le monde est notifié (équipe et invités).
+create or replace function envoyer_annonce(p_code text, p_type text, p_texte text)
+returns int language plpgsql security definer set search_path = public as $$
+declare m personnes; t text := left(trim(coalesce(p_texte, '')), 140); a annonces; subs jsonb;
+begin
+  select * into m from personnes where code = p_code and admin;
+  if not found then raise exception 'réservé aux mariés'; end if;
+  if p_type not in ('annonce', 'moment') then raise exception 'type inconnu'; end if;
+  if t = '' then t := case when p_type = 'moment' then 'Moment !' else '' end; end if;
+  if t = '' then return 0; end if;
+  if (select count(*) from annonces where cree_le > now() - interval '1 minute') >= 5 then raise exception 'trop d''annonces, attends un peu'; end if;
+  insert into annonces (type, texte, de, fin) values (p_type, t, m.prenom, case when p_type = 'moment' then now() + interval '2 minutes' end)
+    returning * into a;
+  select coalesce(jsonb_agg(sub), '[]'::jsonb) into subs from (
+    select sub from push_abonnes where personne_id <> m.id union all select sub from push_invites) s;
+  perform notifier(subs,
+    case when p_type = 'moment' then '⚡ MOMENT : ' || t else '📣 ' || t end,
+    case when p_type = 'moment' then '2 minutes pour poster ta photo ou ta vidéo sur le live !' else 'Annonce de ' || m.prenom end,
+    'annonce-' || a.id, true);
+  return jsonb_array_length(subs);
+end $$;
+
+-- Livre d'or
+create or replace function livre_or_ecrire(p_invite text, p_auteur text, p_texte text)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare au text := left(trim(coalesce(p_auteur, '')), 30); tx text := left(trim(coalesce(p_texte, '')), 1000);
+begin
+  if not code_invites_ok(p_invite) or au = '' or tx = '' then return false; end if;
+  if (select count(*) from livre_or where auteur = au and cree_le > now() - interval '10 minutes') >= 3 then raise exception 'trop de messages, attends un peu'; end if;
+  insert into livre_or (auteur, texte) values (au, tx);
+  return true;
+end $$;
+create or replace function livre_or_lire(p_code text)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+begin
+  if not est_admin(p_code) then return null; end if;
+  return coalesce((select jsonb_agg(jsonb_build_object('auteur', auteur, 'texte', texte, 'cree_le', cree_le) order by id) from livre_or), '[]'::jsonb);
+end $$;
+
+-- Les rappels automatiques : 10 min avant chaque moment ou tâche, la personne concernée reçoit une notification.
+-- Lancé chaque minute par pg_cron (voir plus bas). Chaque rappel n'est envoyé qu'une fois.
+create or replace function envoyer_rappels()
+returns int language plpgsql security definer set search_path = public as $$
+declare maintenant timestamp := now() at time zone 'Europe/Paris'; jj date; r record; n int := 0;
+begin
+  select valeur::date into jj from reglages where cle = 'jour_j';
+  for r in
+    select 'm' || x.id as cle, '⏰ Dans 10 min : ' || x.titre as titre, coalesce(x.lieu, '') as corps,
+           (select jsonb_agg(pa.sub) from push_abonnes pa join personnes p on p.id = pa.personne_id
+             where concerne(x.pour, p.role, p.prenom, p.groupes)) as subs
+    from moments x
+    where cardinality(x.pour) > 0 and (x.jour + x.debut) > maintenant and (x.jour + x.debut) <= maintenant + interval '10 minutes'
+    union all
+    select 't' || t.id, '⏰ Dans 10 min : ' || t.titre, coalesce(t.details, ''),
+           (select jsonb_agg(pa.sub) from push_abonnes pa where pa.personne_id = t.personne_id)
+    from taches t
+    where t.personne_id is not null and t.heure is not null and not t.fait and jj is not null
+      and (jj + t.heure) > maintenant and (jj + t.heure) <= maintenant + interval '10 minutes'
+  loop
+    if exists (select 1 from rappels_envoyes where cle = r.cle) then continue; end if;
+    insert into rappels_envoyes (cle) values (r.cle);
+    n := n + 1;
+    if r.subs is not null then perform notifier(r.subs, r.titre, r.corps, 'rappel-' || r.cle, true); end if;
+  end loop;
+  return n;
+end $$;
+revoke execute on function envoyer_rappels() from public, anon, authenticated;
+
+do $$ begin
+  if exists (select 1 from pg_available_extensions where name = 'pg_cron') then
+    create extension if not exists pg_cron;
+    perform cron.schedule('rappels-mariage', '* * * * *', 'select public.envoyer_rappels()');
+  end if;
+exception when others then
+  raise notice 'Rappels : active « Cron » dans Supabase (Integrations), puis relance ce fichier. (%)', sqlerrm;
+end $$;
+
+revoke execute on function push_invite_enregistrer(text, jsonb, text), envoyer_annonce(text, text, text),
+  livre_or_ecrire(text, text, text), livre_or_lire(text) from public;
+grant  execute on function push_invite_enregistrer(text, jsonb, text), envoyer_annonce(text, text, text),
+  livre_or_ecrire(text, text, text), livre_or_lire(text) to anon, authenticated;
+
+-- Les annonces s'affichent aussi dans l'appli : on les ajoute aux réponses de mon_espace et infos_invites
+create or replace function infos_invites(p_code text)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+begin
+  if not code_invites_ok(p_code) then return null; end if;
+  return jsonb_build_object(
+    'moments', coalesce((select jsonb_agg(jsonb_build_object('id', x.id, 'jour', x.jour, 'debut', x.debut, 'fin', x.fin,
+                                                             'titre', x.titre, 'lieu', x.lieu, 'details', x.details)
+                                          order by x.jour, x.debut, x.id)
+                         from moments x where x.public), '[]'::jsonb),
+    'fiches', coalesce((select jsonb_agg(jsonb_build_object('id', f.id, 'titre', f.titre, 'icone', f.icone, 'contenu', f.contenu)
+                                         order by f.ordre, f.id)
+                        from fiches f where f.public), '[]'::jsonb),
+    'annonces', annonces_recentes(),
+    'maintenant', now());
+end $$;
+
+-- Une photo postée pendant un Moment est marquée avec son nom
+create or replace function marquer_moment()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  select texte into new.moment from annonces where type = 'moment' and now() between cree_le and fin + interval '30 seconds' order by id desc limit 1;
+  return new;
+end $$;
+revoke execute on function marquer_moment() from public, anon, authenticated;
+drop trigger if exists posts_moment on posts;
+create trigger posts_moment before insert on posts for each row execute function marquer_moment();
+
+create or replace function live_fil(p_code text, p_depuis timestamptz default null)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+begin
+  if not code_invites_ok(p_code) then return null; end if;
+  return jsonb_build_object(
+    'maintenant', now(),
+    'posts', coalesce((
+      select jsonb_agg(case when p.cache then jsonb_build_object('id', p.id, 'cache', true)
+                            else jsonb_build_object('id', p.id, 'auteur', p.auteur, 'type', p.type,
+                                                    'fichier', p.fichier, 'miniature', p.miniature,
+                                                    'texte', p.texte, 'cree_le', p.cree_le, 'moment', p.moment) end
+                       order by p.cree_le)
+      from posts p
+      where (p_depuis is null and not p.cache) or p.maj > p_depuis), '[]'::jsonb));
+end $$;

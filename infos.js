@@ -71,14 +71,16 @@ function frise(L, montrerPour) {
 }
 
 // ---------- Les infos des invités (programme public + fiches publiques) ----------
-async function chargerInfos() {
+// silencieux = on ne redessine que si quelque chose a changé (pour les vérifications toutes les 15 s)
+async function chargerInfos(silencieux) {
   if (!LIVE.invite) return;
   if (!INFOS.data) { try { INFOS.data = JSON.parse(STOCKAGE.getItem("mariage-infos") || "null"); } catch (e) {} }
+  const avant = JSON.stringify(Object.assign({}, INFOS.data, { maintenant: 0 })) + INFOS.etat;
   try {
     const r = DEMO_MODE ? demoInfos(LIVE.invite) : await rpc("infos_invites", { p_code: LIVE.invite });
     if (r) { INFOS.data = r; INFOS.etat = ""; try { STOCKAGE.setItem("mariage-infos", JSON.stringify(r)); } catch (e) {} }
   } catch (e) { INFOS.etat = INFOS.data ? "" : "erreur"; }
-  dessiner();
+  if (!silencieux || JSON.stringify(Object.assign({}, INFOS.data, { maintenant: 0 })) + INFOS.etat !== avant) dessiner();
 }
 
 // ---------- Trouve ta table : petite case en haut de l'accueil, résultat dans une pop-up ----------
@@ -139,12 +141,12 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") fermerPopupT
 let ongletInvite = "live";
 function vueInvite() {
   const D = INFOS.data || { moments: [], fiches: [] };
-  const onglets = [["live", "Live"], ["programme", "Programme"], ["menu", "Menu"]];
+  const onglets = [["live", "Live"], ["programme", "Programme"], ["infos", "Infos"]];
   if (!onglets.some(o => o[0] === ongletInvite)) ongletInvite = "live";
   const vue = ongletInvite === "programme" ? frise(D.moments, false)
-    : ongletInvite === "menu" ? vueFiches(D.fiches, "Le menu arrive bientôt.")
+    : ongletInvite === "infos" ? vueFiches(D.fiches, "Les infos arrivent bientôt.") + carteLivreOr()
     : vueLive(true);
-  return `${prenomLive() ? carteRecherche() : ""}
+  return `${prenomLive() ? bandeauxAnnonces() + bandeauNotifInvite() + carteRecherche() : ""}
     <nav class="onglets" role="tablist">${onglets.map(([id, nom]) =>
       `<button type="button" role="tab" class="onglet" data-onglet-invite="${id}" aria-selected="${id === ongletInvite}">${nom}</button>`).join("")}
     </nav>
@@ -163,7 +165,7 @@ document.addEventListener("click", e => {
 function demoInfos(c) {
   if (c !== "invites") return null;
   const D = window.DEMO;
-  return { moments: D.moments.filter(x => x.public), fiches: (D.fiches || []).filter(f => f.public) };
+  return { moments: D.moments.filter(x => x.public), fiches: (D.fiches || []).filter(f => f.public), annonces: (D.annonces || []).slice(), maintenant: new Date().toISOString() };   // copie : sinon on ne voit pas le changement
 }
 const sansAccent = s => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 function demoTable(q) {

@@ -458,3 +458,29 @@ button.avatar { cursor: pointer; }
 .qr-perso { text-align: center; }
 .qr-perso h2 { margin: 2px 0 10px !important; }
 .qr-perso img { width: min(280px, 80vw); height: auto; image-rendering: pixelated; border-radius: 10px; }
+
+/* Annonces et Moments */
+.boutons-bonjour { display: flex; gap: 6px; flex: 0 0 auto; }
+.btn-annonce { padding: 9px 12px; background: var(--rouge-vif, var(--accent)); color: #fff; box-shadow: 0 4px 12px rgba(179,18,46,.35); }
+.annonce-barre, .moment-barre { display: flex; align-items: center; gap: 10px; border-radius: 16px; padding: 12px 14px; box-shadow: 0 6px 18px rgba(0,0,0,.22); }
+.annonce-barre { background: #FFF8EC; border-left: 6px solid var(--rouge-vif, var(--accent)); }
+.annonce-barre p, .moment-barre p { margin: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.annonce-barre b { font-size: 1.05rem; color: var(--rouge-vif, var(--accent)); }
+.annonce-barre small { color: var(--doux); }
+.moment-barre { background: linear-gradient(135deg, var(--or-vif, #D9B25F), #F3D893); color: #3A2A08; animation: pulseMoment 1.2s ease-in-out infinite alternate; }
+.moment-barre b { font-size: 1.05rem; }
+.moment-barre .btn { background: var(--rouge-vif, var(--accent)); color: #fff; border-color: transparent; }
+@keyframes pulseMoment { to { box-shadow: 0 0 0 6px rgba(217,178,95,.35), 0 6px 18px rgba(0,0,0,.22); } }
+.wz-moment { background: #F5EDDD; border-color: #EAD7A8; }
+.badge-moment { position: absolute; top: 6px; left: 6px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--or-vif, #D9B25F); font-size: .75rem; }
+#story .st-moment { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--or-vif, #D9B25F); color: #3A2A08; font-size: .75rem; font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .moment-barre { animation: none; } }
+
+/* Livre d'or */
+.livre-or h3 { margin: 0 0 4px; font: 600 1.4rem var(--titre); color: var(--rouge-vif, var(--accent)); }
+.livre-or form { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.livre-or textarea { width: 100%; padding: 12px 14px; border: 1px solid var(--trait); border-radius: 12px; font: inherit; background: var(--fond); resize: vertical; }
+.mot { margin: 10px 0; padding: 10px 14px; background: #FBF6EC; border-left: 4px solid var(--or-vif, var(--or)); border-radius: 10px; }
+.mot p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mot cite { display: block; margin-top: 6px; font-style: normal; font-weight: 600; color: var(--accent); }
+.fiches + .carte, .fiche + .fiches { margin-top: 14px; }

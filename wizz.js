@@ -179,7 +179,7 @@ function bandeauNotif() {
   if (e === "cache" || e === "on" || e === "impossible") return "";
   if (e === "installer") return `<p class="notif-barre">🔔 Pour recevoir les wizz même téléphone verrouillé : ajoute l'appli à l'écran d'accueil (Safari → Partager → « Sur l'écran d'accueil »), puis ouvre-la depuis l'icône.</p>`;
   if (e === "bloque") return `<p class="notif-barre">🔕 Notifications bloquées. Pour les réactiver : Réglages du téléphone → Notifications → Mariage (ou Chrome).</p>`;
-  return `<div class="notif-barre"><span>🔔 Reçois les wizz même téléphone verrouillé.</span>
+  return `<div class="notif-barre"><span>🔔 Reçois les wizz, les annonces et tes rappels (10 min avant chaque moment), même téléphone verrouillé.</span>
     <button type="button" class="btn plein" data-notif-on ${notifOccupe ? "disabled" : ""}>${notifOccupe ? "Activation…" : "Activer"}</button>
     ${notifMsg ? `<small class="err">${esc(notifMsg)}</small>` : ""}</div>`;
 }

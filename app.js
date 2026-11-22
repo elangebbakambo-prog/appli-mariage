@@ -80,7 +80,7 @@ async function charger() {
     erreur = data ? "" : "inconnu";
     if (data) garderCopie();
     if (data && data.invite) LIVE.invite = data.invite;
-    if (data) verifierWizz();
+    if (data) { verifierWizz(); chargerInfos(true); }
   } catch (e) {
     horsLigne = !!data;
     erreur = data ? "" : "reseau";   // si on avait déjà des données, on les garde
@@ -242,12 +242,13 @@ function dessiner() {
   if (data.moi.admin && data.equipe) onglets.push(["equipe", "Équipe"]);
   if (!onglets.some(o => o[0] === onglet)) onglet = "programme";
   const vue = onglet === "taches" ? vueTaches() : onglet === "equipe" ? carteQr() + vueEquipe()
-    : onglet === "live" ? vueLive(false) : onglet === "fiches" ? vueFiches(data.fiches) : vueProgramme();
+    : onglet === "live" ? vueLive(false) : onglet === "fiches" ? vueLivreAdmin() + vueFiches(data.fiches) + carteLivreOr() : vueProgramme();
   app.innerHTML = `${entete()}
     ${horsLigne ? `<p class="horsligne">Pas de réseau : tu vois la dernière version enregistrée.</p>` : ""}
     ${bandeauInstall()}
     <section class="bonjour">${avatar(data.moi, 46, 'data-photo=""')}<div>Salut <b>${esc(data.moi.prenom)}</b> <span class="pastille ${data.moi.admin ? "or" : ""}">${esc(data.moi.role)}</span>
-      ${data.moi.photo ? "" : `<button type="button" class="lien" data-photo="">📷 Ajoute ta photo</button>`}</div>${boutonWizz()}</section>
+      ${data.moi.photo ? "" : `<button type="button" class="lien" data-photo="">📷 Ajoute ta photo</button>`}</div><div class="boutons-bonjour">${boutonWizz()}${boutonAnnonce()}</div></section>
+    ${bandeauxAnnonces()}
     ${bandeauNotif()}
     ${carteRecherche()}
     <nav class="onglets ${onglets.length > 4 ? "serres" : ""}" role="tablist">${onglets.map(([id, nom, n]) =>
@@ -257,6 +258,7 @@ function dessiner() {
 }
 
 function alerte(txt) {
+  document.querySelectorAll(".toast").forEach(t => t.remove());   // un seul message à la fois
   const a = document.createElement("div");
   a.className = "toast"; a.textContent = txt;
   document.body.appendChild(a);
