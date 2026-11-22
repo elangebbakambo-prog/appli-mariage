@@ -247,6 +247,7 @@ function dessiner() {
     ${bandeauInstall()}
     <section class="bonjour">${avatar(data.moi, 46, 'data-photo=""')}<div>Salut <b>${esc(data.moi.prenom)}</b> <span class="pastille ${data.moi.admin ? "or" : ""}">${esc(data.moi.role)}</span>
       ${data.moi.photo ? "" : `<button type="button" class="lien" data-photo="">📷 Ajoute ta photo</button>`}</div>${boutonWizz()}</section>
+    ${bandeauNotif()}
     ${carteRecherche()}
     <nav class="onglets ${onglets.length > 4 ? "serres" : ""}" role="tablist">${onglets.map(([id, nom, n]) =>
       `<button type="button" role="tab" class="onglet" data-onglet="${id}" aria-selected="${id === onglet}">${nom}${n ? ` <span class="nb">${n}</span>` : ""}</button>`).join("")}

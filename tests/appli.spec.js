@@ -286,3 +286,25 @@ test("Un wizz sans destinataire ne part pas", async ({ page }) => {
   await page.click('[data-wizz-msg="Tu es où ?"]');
   await expect(page.locator(".toast").first()).toContainText("Choisis d'abord");
 });
+
+test.describe(() => {
+test.use({ serviceWorkers: "allow", permissions: ["camera", "microphone", "notifications"] });
+test("Le bandeau « Activer les notifications » s'affiche pour l'équipe (pas en démo)", async ({ page }) => {
+  await page.route("**/config.js", r => r.fulfill({ contentType: "text/javascript",
+    body: `window.MARIAGE = { maries: "A & B", date: "2030-06-01", supabaseUrl: "https://test.supabase.co", supabaseKey: "x", vapidPub: "BOEhk" };` }));
+  await page.route("https://test.supabase.co/**", r => {
+    const u = r.request().url();
+    const rep = u.includes("mon_espace") ? { moi: { prenom: "Eva", role: "Témoin", admin: false }, moments: [], taches: [], fiches: [], annuaire: [], invite: null }
+      : u.includes("mes_wizz") ? { recus: [], reponses: [] } : null;
+    r.fulfill({ contentType: "application/json", body: JSON.stringify(rep) });
+  });
+  // Chromium sans écran répond toujours « denied » : on simule un téléphone qui n'a pas encore répondu
+  await page.addInitScript(() => Object.defineProperty(Notification, "permission", { get: () => "default" }));
+  await page.goto("/?code=abc");
+  await expect(page.locator(".notif-barre")).toContainText("Reçois les wizz");
+  await expect(page.locator("[data-notif-on]")).toBeVisible();
+  await page.goto("/?demo=1&code=temoin");
+  await expect(page.locator(".bonjour")).toBeVisible();
+  await expect(page.locator(".notif-barre")).toHaveCount(0);
+});
+});

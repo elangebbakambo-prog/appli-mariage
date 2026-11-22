@@ -170,5 +170,23 @@ begin
     if mes_wizz('faux') is not null then raise exception 'ÉCHEC : mes_wizz sans lien'; end if;
   end;
 
+  -- 11. Notifications
+  declare inv text;
+  begin
+    select code into inv from codes where prenom = 'INVITES';
+    begin perform 1 from push_cfg; raise exception 'ÉCHEC : anon peut lire la clé privée des notifications';
+    exception when insufficient_privilege then null; end;
+    begin perform 1 from push_abonnes; raise exception 'ÉCHEC : anon peut lire les abonnés';
+    exception when insufficient_privilege then null; end;
+    if push_enregistrer(inv, '{"endpoint":"https://push.example/a","keys":{"p256dh":"x","auth":"y"}}') then raise exception 'ÉCHEC : le code invités s''abonne aux wizz'; end if;
+    if push_enregistrer(c_dj, '{"endpoint":"http://pirate.example/a","keys":{"p256dh":"x","auth":"y"}}') then raise exception 'ÉCHEC : abonnement non https accepté'; end if;
+    if push_enregistrer(c_dj, '{"endpoint":"https://push.example/a"}') then raise exception 'ÉCHEC : abonnement sans clés accepté'; end if;
+    if not push_enregistrer(c_dj, '{"endpoint":"https://push.example/a","keys":{"p256dh":"x","auth":"y"}}') then raise exception 'ÉCHEC : le DJ ne peut pas s''abonner'; end if;
+    if push_retirer(c_temoin, 'https://push.example/a') then raise exception 'ÉCHEC : un témoin désabonne le téléphone du DJ'; end if;
+    -- Un wizz part même si le relais des notifications n'est pas joignable
+    if envoyer_wizz(c_mariee, '{DJ}', 'Test notif') <> 1 then raise exception 'ÉCHEC : le wizz ne part plus avec les notifications'; end if;
+    if not push_retirer(c_dj, 'https://push.example/a') then raise exception 'ÉCHEC : le DJ ne peut pas se désabonner'; end if;
+  end;
+
   raise notice '✅ Base : tous les tests de sécurité passent';
 end $$;

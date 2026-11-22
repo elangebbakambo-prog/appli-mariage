@@ -445,3 +445,9 @@ button.avatar { cursor: pointer; }
 .wz-reponses { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .wz-reponses .btn { padding: 13px; font-size: 1rem; }
 @media (prefers-reduced-motion: reduce) { #wizz.tremble .wz-boite, .wz-eclair { animation: none; } }
+
+/* Bandeau des notifications */
+.notif-barre { margin: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #FFF3D6; color: #5C4410; border-radius: 14px;
+  padding: 10px 14px; font-size: .9rem; border: 1px solid rgba(217,178,95,.7); }
+.notif-barre span { flex: 1; min-width: 180px; }
+.notif-barre .btn { padding: 8px 14px; }

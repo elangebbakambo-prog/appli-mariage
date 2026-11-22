@@ -462,3 +462,85 @@ end $$;
 
 revoke execute on function envoyer_wizz(text, text[], text), mes_wizz(text), repondre_wizz(text, bigint, text) from public;
 grant  execute on function envoyer_wizz(text, text[], text), mes_wizz(text), repondre_wizz(text, bigint, text) to anon, authenticated;
+
+-- ===============================================================
+-- 7. Les notifications (comme l'appli Vegas) : un wizz fait sonner le téléphone même verrouillé
+-- ===============================================================
+-- Chaque téléphone qui accepte les notifications est enregistré ici, relié à la personne.
+-- À chaque nouveau wizz, la base appelle la fonction « vegas-push » (un simple relais qui ne garde rien)
+-- avec les clés VAPID rangées dans push_cfg. La clé privée n'est JAMAIS sur GitHub : elle est dans donnees-mariage.sql.
+
+do $$ begin
+  if exists (select 1 from pg_available_extensions where name = 'pg_net') then create extension if not exists pg_net; end if;
+end $$;
+
+create table if not exists push_abonnes (
+  endpoint    text primary key,
+  personne_id uuid not null references personnes(id) on delete cascade,
+  sub         jsonb not null,
+  maj         timestamptz not null default now()
+);
+create table if not exists push_cfg (
+  id      int primary key default 1 check (id = 1),
+  url     text not null,     -- adresse du relais (fonction vegas-push)
+  pub     text not null,     -- clé publique VAPID (aussi dans config.js)
+  priv    text not null,     -- clé privée VAPID : SECRÈTE
+  subject text not null
+);
+alter table push_abonnes enable row level security;
+alter table push_cfg     enable row level security;
+revoke all on push_abonnes, push_cfg from anon, authenticated;
+
+-- Enregistrer le téléphone de quelqu'un (avec son lien perso)
+create or replace function push_enregistrer(p_code text, p_sub jsonb)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare m personnes; ep text := p_sub->>'endpoint';
+begin
+  select * into m from personnes where code = p_code;
+  if not found then return false; end if;
+  if ep is null or ep !~ '^https://' or char_length(ep) > 1000 or char_length(p_sub::text) > 4000
+     or coalesce(p_sub->'keys'->>'p256dh', '') = '' or coalesce(p_sub->'keys'->>'auth', '') = '' then return false; end if;
+  insert into push_abonnes (endpoint, personne_id, sub) values (ep, m.id, p_sub)
+    on conflict (endpoint) do update set personne_id = excluded.personne_id, sub = excluded.sub, maj = now();
+  return true;
+end $$;
+
+create or replace function push_retirer(p_code text, p_endpoint text)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare m personnes; n int;
+begin
+  select * into m from personnes where code = p_code;
+  if not found then return false; end if;
+  delete from push_abonnes where endpoint = p_endpoint and personne_id = m.id;
+  get diagnostics n = row_count;
+  return n > 0;
+end $$;
+
+revoke execute on function push_enregistrer(text, jsonb), push_retirer(text, text) from public;
+grant  execute on function push_enregistrer(text, jsonb), push_retirer(text, text) to anon, authenticated;
+
+-- À chaque nouveau wizz : notifier les téléphones du destinataire
+create or replace function wizz_notifier()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare cfg push_cfg; abonnes jsonb;
+begin
+  select * into cfg from push_cfg where id = 1;
+  if not found then return new; end if;
+  select coalesce(jsonb_agg(sub), '[]'::jsonb) into abonnes from push_abonnes where personne_id = new.pour_id;
+  if jsonb_array_length(abonnes) = 0 then return new; end if;
+  perform net.http_post(
+    url := cfg.url,
+    body := jsonb_build_object(
+      'vapid', jsonb_build_object('pub', cfg.pub, 'priv', cfg.priv, 'subject', cfg.subject),
+      'subs', abonnes, 'urgency', 'high',
+      'payload', jsonb_build_object('title', '⚡ WIZZ de ' || new.de, 'body', new.message, 'tag', 'wizz-' || new.id, 'url', cfg.subject)),
+    headers := '{"Content-Type": "application/json"}'::jsonb,
+    timeout_milliseconds := 10000);
+  return new;
+exception when others then
+  return new;   -- une notification ratée ne doit jamais empêcher le wizz
+end $$;
+revoke execute on function wizz_notifier() from public, anon, authenticated;
+
+drop trigger if exists wizz_notif on wizz;
+create trigger wizz_notif after insert on wizz for each row execute function wizz_notifier();

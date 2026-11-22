@@ -143,3 +143,53 @@ async function repondreWizz(reponse) {
 
 setInterval(verifierWizz, 8000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) verifierWizz(); });
+
+// ---------- Notifications : le wizz sonne même téléphone verrouillé (comme l'appli Vegas) ----------
+const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const enApp = () => { try { return matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; } catch (e) { return false; } };
+const notifGardee = () => { try { return JSON.parse(STOCKAGE.getItem("mariage-notif") || "null"); } catch (e) { return null; } };
+let notifOccupe = false, notifMsg = "";
+function etatNotif() {
+  if (DEMO_MODE || !CFG.vapidPub) return "cache";
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return iOS && !enApp() ? "installer" : "impossible";
+  if (iOS && !enApp()) return "installer";
+  if (Notification.permission === "denied") return "bloque";
+  const g = notifGardee();
+  return Notification.permission === "granted" && g && g.code === code ? "on" : "off";
+}
+function bandeauNotif() {
+  const e = etatNotif();
+  if (e === "cache" || e === "on" || e === "impossible") return "";
+  if (e === "installer") return `<p class="notif-barre">🔔 Pour recevoir les wizz même téléphone verrouillé : ajoute l'appli à l'écran d'accueil (Safari → Partager → « Sur l'écran d'accueil »), puis ouvre-la depuis l'icône.</p>`;
+  if (e === "bloque") return `<p class="notif-barre">🔕 Notifications bloquées. Pour les réactiver : Réglages du téléphone → Notifications → Mariage (ou Chrome).</p>`;
+  return `<div class="notif-barre"><span>🔔 Reçois les wizz même téléphone verrouillé.</span>
+    <button type="button" class="btn plein" data-notif-on ${notifOccupe ? "disabled" : ""}>${notifOccupe ? "Activation…" : "Activer"}</button>
+    ${notifMsg ? `<small class="err">${esc(notifMsg)}</small>` : ""}</div>`;
+}
+const b64uVersOctets = s => { const t = s.replace(/-/g, "+").replace(/_/g, "/"); const b = atob(t + "=".repeat((4 - t.length % 4) % 4)); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+async function activerNotif() {
+  notifMsg = ""; notifOccupe = true; dessiner();
+  let perm;
+  try { perm = await Notification.requestPermission(); } catch (e) { perm = Notification.permission; }
+  if (perm !== "granted") { notifOccupe = false; notifMsg = perm === "denied" ? "" : "Il faut accepter les notifications."; return dessiner(); }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uVersOctets(CFG.vapidPub) });
+    if (!await rpc("push_enregistrer", { p_code: code, p_sub: sub.toJSON() })) throw new Error("refusé");
+    STOCKAGE.setItem("mariage-notif", JSON.stringify({ e: sub.endpoint, code }));
+    reg.showNotification("🔔 Notifications activées", { body: "Tu recevras les wizz même téléphone verrouillé.", icon: "icon-192.png", tag: "notif-test" }).catch(() => {});
+  } catch (e) { notifMsg = "L'activation a échoué. Réessaie."; }
+  notifOccupe = false; dessiner();
+}
+// Si le téléphone a renouvelé son abonnement, on le remet à jour sans rien demander
+async function resyncNotif() {
+  if (etatNotif() !== "on") return;
+  try {
+    const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription(), g = notifGardee();
+    if (!sub) { STOCKAGE.removeItem("mariage-notif"); return dessiner(); }
+    if (g.e !== sub.endpoint) { await rpc("push_enregistrer", { p_code: code, p_sub: sub.toJSON() }); STOCKAGE.setItem("mariage-notif", JSON.stringify({ e: sub.endpoint, code })); }
+  } catch (e) {}
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-notif-on]")) activerNotif(); });
+setTimeout(resyncNotif, 3000);

@@ -6,5 +6,7 @@ window.MARIAGE = {
   maries: "Chaïna & Chris",   // affiché en grand en haut
   date: "2026-12-19",          // jour du mariage (AAAA-MM-JJ), sert au compte à rebours et à « maintenant »
   supabaseUrl: "https://evwxybkpdzqwndndcdnf.supabase.co",
+  // Clé PUBLIQUE des notifications (la privée est seulement dans Supabase, table push_cfg)
+  vapidPub: "BOEhk-3vgrEob5QmrLMhy6o2eOyp737N9MyCkV7H4qaYz6UmwFUZdDMDOgTtDNS8_yMeCTTuNhLUV2hUOwiAW2g",
   supabaseKey: "sb_publishable_0Q7V3bYlNEN2icImW11cPQ_dTQ4KJ42"
 };

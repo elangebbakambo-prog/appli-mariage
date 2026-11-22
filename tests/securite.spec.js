@@ -24,6 +24,7 @@ test("Pas de clé secrète Supabase ni de mot de passe dans le code", () => {
   for (const f of [...jss, ...htmls, ...sqls]) {
     const t = lire(f);
     expect(t, `${rel(f)} contient une clé secrète`).not.toMatch(/sb_secret_[A-Za-z0-9_-]+/);
+    expect(t, `${rel(f)} contient une clé privée de notifications (VAPID)`).not.toMatch(/priv\w*["']?\s*[:=,]\s*["'][A-Za-z0-9_-]{40,}["']/i);
     expect(t, `${rel(f)} contient une adresse de connexion à la base avec mot de passe`).not.toMatch(/postgres(ql)?:\/\/[^\s:]+:[^\s@]+@/);
     for (const [, payload] of t.matchAll(/eyJ[A-Za-z0-9_-]{10,}\.(eyJ[A-Za-z0-9_-]+)\.[A-Za-z0-9_-]+/g)) {
       let role = ""; try { role = JSON.parse(Buffer.from(payload, "base64url").toString()).role; } catch (e) {}
