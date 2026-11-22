@@ -2,7 +2,11 @@
 // Pour l'instant, le wizz arrive quand l'appli est ouverte (vérification toutes les 8 s, et dès qu'on revient dessus).
 // Chargé AVANT app.js : utilise data, code, rpc, esc, avatar, popupTable… seulement dans ses fonctions.
 
-const WIZZ = { file: [], affiche: null, choix: new Set(), timer: 0 };
+const WIZZ = { file: [], affiche: null, choix: new Set(), lieu: "", timer: 0 };
+// Les endroits du mariage (Domaine de Fompeyre et église) : touchés une fois, ils s'ajoutent au message
+const LIEUX_WIZZ = ["Chambre de la mariée", "Salle prépa garçons", "Salle de shooting", "Salle principale", "Salle du vin d'honneur",
+  "Entrée / jonction des salles", "Vestiaire", "Parking", "Cheminée", "Table d'honneur", "Piste de danse / DJ", "Bar",
+  "Tables dessert", "Arche (dehors)", "Devant le château", "Église"];
 const MESSAGES_WIZZ = ["Besoin de toi ici 🙏", "Tu es où ?", "Urgent, appelle-moi 📞", "Viens vite !", "On t'attend pour la photo 📸", "C'est l'heure ⏰"];
 const lusRep = () => { try { return new Set(JSON.parse(STOCKAGE.getItem("mariage-wizz-rep") || "[]")); } catch (e) { return new Set(); } };
 
@@ -15,13 +19,17 @@ function composerWizz() {
   const groupes = [...new Set(A.flatMap(p => p.groupes || []))].sort();
   const nomGroupe = g => ({ Team: "Toute la Team", Filles: "Les filles", "Garçons": "Les garçons", Prestataires: "Les prestataires", Photo: "Photo et vidéo" }[g] || g);
   const puce = (val, html) => `<button type="button" class="wz-puce ${WIZZ.choix.has(val) ? "on" : ""}" data-wizz-pour="${esc(val)}" aria-pressed="${WIZZ.choix.has(val)}">${html}</button>`;
+  const lieux = LIEUX_WIZZ.map(l => { const choisi = WIZZ.lieu === l;
+    return `<button type="button" class="wz-puce wz-lieu ${choisi ? "on" : ""}" data-wizz-lieu="${esc(l)}" aria-pressed="${choisi}">📍 ${esc(l)}</button>`; }).join("");
   const gens = A.map(p => puce(p.prenom, `${avatar(p, 30)}<span>${esc(p.prenom)}</span>`)).join("");   // puce() échappe la valeur
   return `<h2>⚡ Wizz</h2>
     <p class="petit">Bipe quelqu'un : son écran tremble et son téléphone vibre.</p>
     <h3 class="wz-titre">À qui ?</h3>
     ${groupes.length ? `<div class="wz-puces">${groupes.map(g => puce(g, esc(nomGroupe(g)))).join("")}</div>` : ""}
     <div class="wz-puces wz-gens">${gens}</div>
-    <h3 class="wz-titre">Message</h3>
+    <h3 class="wz-titre">Où ? <small>(facultatif)</small></h3>
+    <div class="wz-puces wz-lieux">${lieux}</div>
+    <h3 class="wz-titre">Message <small>(il part dès que tu le touches)</small></h3>
     <div class="wz-puces">${MESSAGES_WIZZ.map(m => `<button type="button" class="wz-puce wz-msg" data-wizz-msg="${esc(m)}">${esc(m)}</button>`).join("")}</div>
     <form id="formWizz" class="wz-form">
       <input id="champWizz" maxlength="140" placeholder="Ou écris ton message (ex. Viens au vestiaire)" autocomplete="off" enterkeyhint="send">
@@ -34,7 +42,8 @@ function majChoixWizz() {
   });
 }
 async function envoyerWizz(message) {
-  const pour = [...WIZZ.choix], msg = String(message || "").trim();
+  const pour = [...WIZZ.choix], texte = String(message || "").trim();
+  const msg = texte && WIZZ.lieu ? (texte + "\n📍 " + WIZZ.lieu).slice(0, 140) : texte;
   if (!pour.length) return alerte("Choisis d'abord à qui envoyer le wizz.");
   if (!msg) return alerte("Choisis ou écris un message.");
   try {
@@ -46,13 +55,19 @@ async function envoyerWizz(message) {
       n = cibles.length;
       if (cibles[0]) setTimeout(() => alerte(cibles[0].prenom + " : J'arrive 🏃"), 2500);   // réponse simulée
     } else n = await rpc("envoyer_wizz", { p_code: code, p_pour: pour, p_message: msg });
-    fermerPopupTable(); WIZZ.choix.clear();
+    fermerPopupTable(); WIZZ.choix.clear(); WIZZ.lieu = "";
     alerte(n ? `⚡ Wizz envoyé à ${n} personne${n > 1 ? "s" : ""}` : "Personne à wizzer dans ce choix.");
     if (navigator.vibrate) navigator.vibrate(60);
   } catch (e) { alerte(/trop de wizz/.test(e.message) ? "Doucement 😄 Trop de wizz d'un coup." : "Pas envoyé : vérifie ta connexion."); }
 }
 document.addEventListener("click", e => {
-  if (e.target.closest("[data-wizz-ouvrir]")) { WIZZ.choix.clear(); return popupTable(composerWizz(), "Envoyer un wizz"); }
+  if (e.target.closest("[data-wizz-ouvrir]")) { WIZZ.choix.clear(); WIZZ.lieu = ""; return popupTable(composerWizz(), "Envoyer un wizz"); }
+  const l = e.target.closest("[data-wizz-lieu]");
+  if (l) {
+    WIZZ.lieu = WIZZ.lieu === l.dataset.wizzLieu ? "" : l.dataset.wizzLieu;
+    document.querySelectorAll("[data-wizz-lieu]").forEach(b => { const on = b.dataset.wizzLieu === WIZZ.lieu; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); });
+    return;
+  }
   const p = e.target.closest("[data-wizz-pour]");
   if (p) { const v = p.dataset.wizzPour; WIZZ.choix.has(v) ? WIZZ.choix.delete(v) : WIZZ.choix.add(v); return majChoixWizz(); }
   const m = e.target.closest("[data-wizz-msg]");
@@ -110,10 +125,12 @@ function afficherWizz() {
   if (!ov) { ov = document.createElement("div"); ov.id = "wizz"; ov.setAttribute("role", "alertdialog"); ov.setAttribute("aria-label", "Wizz"); document.body.appendChild(ov); }
   let heure = ""; try { heure = new Date(w.cree_le).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); } catch (e) {}
   const photoDe = avatar({ prenom: w.de, photo: w.photo }, 64);   // avatar() échappe lui-même
+  const [texteSeul, lieu] = String(w.message).split("\n📍 ");
   ov.innerHTML = `<div class="wz-boite">
       <p class="wz-eclair" aria-hidden="true">⚡</p>
       <p class="wz-de">${photoDe}<span>WIZZ de <b>${esc(w.de)}</b></span></p>
-      <p class="wz-texte">${esc(w.message)}</p>
+      <p class="wz-texte">${esc(texteSeul)}</p>
+      ${lieu ? `<p class="wz-ou">📍 ${esc(lieu)}</p>` : ""}
       <p class="petit">${esc(heure)}</p>
       <div class="wz-reponses">
         <button type="button" class="btn plein" data-wizz-rep="J'arrive 🏃">J'arrive 🏃</button>

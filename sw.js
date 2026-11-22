@@ -1,7 +1,7 @@
 // Service worker : l'appli s'ouvre même sans réseau (programme et tâches du dernier chargement).
 // Pages et fichiers : on essaie le réseau d'abord (toujours la dernière version), sinon la copie gardée.
 // Les appels à Supabase ne passent pas par ici (autre domaine) : ils ne sont jamais mis en cache.
-const CACHE = "mariage-v12";
+const CACHE = "mariage-v13";
 const FICHIERS = ["./", "index.html", "style.css", "app.js", "config.js", "demo.js", "live.js", "infos.js", "wizz.js", "vendor/qrcode.js", "manifest.webmanifest", "icon-192.png"];
 
 self.addEventListener("install", e => {

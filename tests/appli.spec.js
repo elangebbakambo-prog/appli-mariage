@@ -308,3 +308,15 @@ test("Le bandeau « Activer les notifications » s'affiche pour l'équipe (pas e
   await expect(page.locator(".notif-barre")).toHaveCount(0);
 });
 });
+
+test("Wizz avec un endroit : il s'affiche en gros chez la personne", async ({ page }) => {
+  await page.goto("/?code=mariee");
+  await page.click("[data-wizz-ouvrir]");
+  await page.click('[data-wizz-pour="DJ"]');
+  await page.click('[data-wizz-lieu="Salle du vin d\'honneur"]');
+  await page.click('[data-wizz-msg="Besoin de toi ici 🙏"]');
+  expect(await page.evaluate(() => window.DEMO.wizz[0].message)).toBe("Besoin de toi ici 🙏\n📍 Salle du vin d'honneur");
+  await page.evaluate(() => { window.DEMO.wizz.push({ pour: "La mariée", de: "Témoin 1", message: "Viens vite !\n📍 Vestiaire" }); verifierWizz(); });
+  await expect(page.locator("#wizz .wz-texte")).toHaveText("Viens vite !");
+  await expect(page.locator("#wizz .wz-ou")).toHaveText("📍 Vestiaire");
+});

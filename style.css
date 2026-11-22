@@ -451,3 +451,7 @@ button.avatar { cursor: pointer; }
   padding: 10px 14px; font-size: .9rem; border: 1px solid rgba(217,178,95,.7); }
 .notif-barre span { flex: 1; min-width: 180px; }
 .notif-barre .btn { padding: 8px 14px; }
+.wz-titre small { font: 500 .75rem var(--corps); color: var(--doux); }
+.wz-lieux { max-height: 150px; overflow-y: auto; }
+.wz-lieu.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.wz-ou { margin: 6px auto 2px; display: inline-block; padding: 8px 16px; border-radius: 999px; background: var(--accent); color: #fff; font: 700 1.15rem var(--corps); }
