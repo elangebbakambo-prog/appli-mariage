@@ -36,6 +36,11 @@ window.DEMO = {
     { id: 7, titre: "Les mariés avec les témoins", details: "Les mariés, Témoin 1 et Témoin 2.", heure: "14:00", section: "Photos de groupe", pour: ["Team"] },
     { id: 8, titre: "Famille proche", details: "Les parents, les grands-parents et les cousins.", heure: null, section: "Photos de groupe", pour: ["Team"] }
   ],
+  contacts: [
+    { section: "Important", nom: "Fleur", role: "Wedding planner", tel: "06 00 00 00 01", pour: [] },
+    { section: "Important", nom: "Le DJ", role: "DJ", tel: "06 00 00 00 02", pour: [] },
+    { section: "Team Bride et famille", nom: "Domi", role: "Papa de la mariée", tel: "06 00 00 00 03", pour: ["Team"] }
+  ],
   fiches: [
     { id: 1, titre: "Fiche DJ", icone: "🎧", pour: ["DJ"], public: false,
       contenu: "## Déroulé\n- **21h00** : entrée des mariés\n## Blacklist\n- Pas de macarena" },

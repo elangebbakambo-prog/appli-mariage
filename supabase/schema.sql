@@ -68,6 +68,20 @@ create table if not exists plan_table (
   table_no int not null
 );
 
+-- Les numéros importants (prestataires, famille…) : boutons Appeler et WhatsApp dans l'appli.
+-- « pour » vide = toute personne qui a un lien perso ; sinon seulement ces rôles / prénoms / groupes. Jamais les invités.
+create table if not exists contacts (
+  id      bigint generated always as identity primary key,
+  section text not null default 'Important',
+  nom     text not null,
+  role    text,
+  tel     text not null,
+  pour    text[] not null default '{}',
+  ordre   int not null default 0
+);
+alter table contacts enable row level security;
+revoke all on contacts from anon, authenticated;
+
 alter table personnes enable row level security;
 alter table fiches     enable row level security;
 alter table plan_table enable row level security;
@@ -141,6 +155,11 @@ begin
                order by t.id)
       from taches t left join personnes p on p.id = t.personne_id
       where m.admin or tache_pour_moi(t, m)), '[]'::jsonb),
+
+    -- Les numéros importants qui me concernent
+    'contacts', coalesce((
+      select jsonb_agg(jsonb_build_object('section', c.section, 'nom', c.nom, 'role', c.role, 'tel', c.tel) order by c.ordre, c.id)
+      from contacts c where m.admin or concerne(c.pour, m.role, m.prenom, m.groupes)), '[]'::jsonb),
 
     -- La liste de l'équipe et des liens : seulement pour les admins
     'equipe', case when m.admin then (

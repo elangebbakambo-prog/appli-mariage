@@ -45,3 +45,10 @@ insert into plan_table (nom, table_no) values
 insert into les_tables (no, nom, forme) values (1, null, 'ronde'), (2, null, 'rect') on conflict (no) do nothing;
 insert into plan_table (nom, table_no) values ('Témoin Un', 2), ('Marc Leroy', 2);
 update personnes set nom_plan = 'Témoin Un' where prenom = 'Témoin 1';
+
+-- Version 4 : numéros importants (faux numéros d'exemple)
+delete from contacts;
+insert into contacts (section, nom, role, tel, pour, ordre) values
+  ('Important', 'Fleur', 'Wedding planner', '06 00 00 00 01', '{}', 1),
+  ('Important', 'Le DJ', 'DJ', '06 00 00 00 02', '{}', 2),
+  ('Team Bride et famille', 'Domi', 'Papa de la mariée', '06 00 00 00 03', '{Team}', 3);

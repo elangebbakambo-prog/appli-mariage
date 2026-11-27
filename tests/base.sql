@@ -109,6 +109,13 @@ begin
     if mon_espace(c_temoin)::text like '%Fiche DJ%' then raise exception 'ÉCHEC : un témoin voit la fiche DJ'; end if;
     if mon_espace(c_temoin)::text not like '%Le bar et le menu%' then raise exception 'ÉCHEC : la fiche publique est cachée'; end if;
 
+    if mon_espace(c_dj)::text not like '%Wedding planner%' then raise exception 'ÉCHEC : le DJ ne voit pas les numéros importants'; end if;
+    if mon_espace(c_dj)::text like '%Papa de la mariée%' then raise exception 'ÉCHEC : le DJ voit les numéros de la famille'; end if;
+    if mon_espace(c_temoin)::text not like '%Papa de la mariée%' then raise exception 'ÉCHEC : un témoin ne voit pas les numéros de la famille'; end if;
+    if infos_invites(inv)::text like '%06 00 00 00%' then raise exception 'ÉCHEC : les invités voient des numéros'; end if;
+    begin perform 1 from contacts; raise exception 'ÉCHEC : anon lit les numéros';
+    exception when insufficient_privilege then null; end;
+
     if infos_invites('faux') is not null or infos_invites(c_temoin) is not null then raise exception 'ÉCHEC : infos invités sans le code invités'; end if;
     r := infos_invites(inv);
     if r::text like '%Fiche DJ%' then raise exception 'ÉCHEC : les invités voient la fiche DJ'; end if;

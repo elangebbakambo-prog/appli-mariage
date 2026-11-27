@@ -58,6 +58,7 @@ function demoEspace(c) {
     moments: D.moments.filter(x => m.admin || concerne(x.pour, m.role, m.prenom, m.groupes)),
     taches: D.taches.filter(mien).map(t => Object.assign({ pour: t.prenom || t.role, fait: false }, t, coches[t.id] || {})),
     fiches: (D.fiches || []).filter(f => m.admin || f.public || (f.pour.length && concerne(f.pour, m.role, m.prenom))),
+    contacts: (D.contacts || []).filter(x => m.admin || concerne(x.pour, m.role, m.prenom, m.groupes)),
     equipe: m.admin ? D.personnes : null,
     annuaire: D.personnes.filter(p => p !== m).map(p => ({ prenom: p.prenom, role: p.role, photo: p.photo || null, groupes: p.groupes || [] })),
     invite: "invites"
@@ -241,8 +242,8 @@ function dessiner() {
   if (data.invite) onglets.splice(1, 0, ["live", "Live"]);
   if (data.fiches && data.fiches.length) onglets.push(["fiches", "Fiches"]);
   if (data.moi.admin && data.equipe) onglets.push(["equipe", "Équipe"]);
-  if (!onglets.some(o => o[0] === onglet) && !(onglet === "photos" && photosGroupe().length)) onglet = "programme";
-  const vue = onglet === "photos" ? vuePhotos() : onglet === "taches" ? vueTaches() : onglet === "equipe" ? carteQr() + carteEcran() + vueEquipe()
+  if (!onglets.some(o => o[0] === onglet) && !(onglet === "photos" && photosGroupe().length) && !(onglet === "contacts" && mesContacts().length)) onglet = "programme";
+  const vue = onglet === "contacts" ? vueContacts() : onglet === "photos" ? vuePhotos() : onglet === "taches" ? vueTaches() : onglet === "equipe" ? carteQr() + carteEcran() + vueEquipe()
     : onglet === "live" ? carteSouvenirs() + vueLive(false) : onglet === "fiches" ? vueLivreAdmin() + vueFiches(data.fiches) + carteLivreOr() : vueProgramme();
   app.innerHTML = `${entete()}
     ${horsLigne ? `<p class="horsligne">Pas de réseau : tu vois la dernière version enregistrée.</p>` : ""}

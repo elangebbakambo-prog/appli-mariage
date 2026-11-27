@@ -476,3 +476,20 @@ test("Check-list des photos de groupe : on coche, ça passe dans « Déjà faite
   await page.click(".lien-photos");
   await expect(page.locator(".ph-tete")).toBeVisible();
 });
+
+test("Numéros importants : appeler ou WhatsApp en un appui, la famille seulement pour la Team", async ({ page }) => {
+  await page.goto("/?code=temoin");
+  await page.click("#menuBtn");
+  await page.click('#tiroir [data-aller="o:contacts"]');
+  await expect(page.locator(".ct")).toHaveCount(3);
+  const fleur = page.locator(".ct", { hasText: "Fleur" });
+  await expect(fleur.locator(".ct-tel")).toHaveAttribute("href", "tel:+33600000001");
+  await expect(fleur.locator(".ct-wa")).toHaveAttribute("href", "https://wa.me/33600000001");
+
+  await page.evaluate(() => localStorage.clear());
+  await page.goto("/?code=dj");
+  await page.click("#menuBtn");
+  await page.click('#tiroir [data-aller="o:contacts"]');
+  await expect(page.locator(".ct")).toHaveCount(2);          // pas les numéros de la famille
+  await expect(page.getByText("Papa de la mariée")).toHaveCount(0);
+});
